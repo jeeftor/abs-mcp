@@ -143,7 +143,7 @@ jobs:
           server_version="${VERSION#v}"
           jq --arg version "$server_version" \
             --arg image "${IMAGE_REF}:${server_version}" \
-            '.version = $version | .packages[0].version = $version | .packages[0].identifier = $image' \
+            '.version = $version | .packages[0].identifier = $image | del(.packages[0].version)' \
             server.json > server.tmp
           mv server.tmp server.json
 
