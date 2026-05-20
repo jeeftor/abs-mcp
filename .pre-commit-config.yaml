@@ -49,6 +49,12 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: validate-server-json
+        name: validate server.json
+        entry: python3 scripts/validate_server_json.py
+        language: system
+        pass_filenames: false
+
       - id: script-tests
         name: script tests
         entry: python3 -m unittest discover -s scripts -p test_*.py

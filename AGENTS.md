@@ -40,6 +40,14 @@ Build a high-quality Model Context Protocol server for Audiobookshelf. The serve
 - Mutating tools must be opt-in and should require IDs rather than fuzzy names where possible.
 - Long operations such as scans should return job/status information and provide a separate status/read tool instead of blocking indefinitely.
 
+## Release and Registry Rules
+
+- Keep `internal/version.Version`, `server.json` top-level `version`, and release tags aligned.
+- For MCP Registry OCI packages, put the package version only in the image tag inside `packages[].identifier`.
+- Do not add `packages[].version` when `packages[].registryType` is `oci`; the MCP Registry rejects that shape even if local JSON checks pass.
+- Run `python3 scripts/validate_server_json.py` or `prek run validate-server-json --all-files` before release metadata changes.
+- Tag releases as `vX.Y.Z`; tag pushes trigger the release workflow, GHCR image publish, MCP Registry publish, and GitHub release creation.
+
 ## Audiobookshelf API Update Workflow
 
 - Maintain an API inventory generated from Audiobookshelf source, especially `server/routers/ApiRouter.js` and controller methods under `server/controllers/`.
