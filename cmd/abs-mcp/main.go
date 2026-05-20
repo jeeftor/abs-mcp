@@ -39,6 +39,15 @@ func newRootCommand(ctx context.Context, runner func(context.Context, config.Con
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(command *cobra.Command, args []string) error {
+			envFile, err := command.Flags().GetString(config.KeyEnvFile)
+			if err != nil {
+				return err
+			}
+			if envFile != "" {
+				if err := config.ApplyEnvFile(settings, envFile); err != nil {
+					return err
+				}
+			}
 			cfg, err := config.LoadFromViper(settings)
 			if err != nil {
 				return err
@@ -54,6 +63,7 @@ func newRootCommand(ctx context.Context, runner func(context.Context, config.Con
 func bindFlags(flags *pflag.FlagSet, settings *viper.Viper) {
 	flags.String(config.KeyBaseURL, "", "Audiobookshelf base URL (env ABS_BASE_URL)")
 	flags.String(config.KeyAPIKey, "", "Audiobookshelf API key or bearer token (env ABS_API_KEY)")
+	flags.String(config.KeyEnvFile, "", "Docker-style env file with ABS_* settings")
 	flags.String(config.KeyTimeout, "", "Audiobookshelf request timeout as a Go duration or seconds (env ABS_TIMEOUT)")
 	flags.Bool(config.KeyReadOnly, true, "Block mutating MCP tools (env ABS_READ_ONLY)")
 	flags.String(config.KeyFixtureDir, "", "ABS fixture directory used by fixture resources (env ABS_FIXTURE_DIR)")
@@ -64,6 +74,7 @@ func bindFlags(flags *pflag.FlagSet, settings *viper.Viper) {
 
 	mustBindFlag(settings, config.KeyBaseURL, flags)
 	mustBindFlag(settings, config.KeyAPIKey, flags)
+	mustBindFlag(settings, config.KeyEnvFile, flags)
 	mustBindFlag(settings, config.KeyTimeout, flags)
 	mustBindFlag(settings, config.KeyReadOnly, flags)
 	mustBindFlag(settings, config.KeyFixtureDir, flags)

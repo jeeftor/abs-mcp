@@ -27,11 +27,13 @@ other client to register custom MCP servers during tests.
 
 ## Configuration Contract
 
-Environment variables are the preferred production and MCP-client interface.
-Explicit CLI flags exist for local debugging and override environment values.
+Environment variables and env files are the preferred production and MCP-client
+interfaces. Explicit CLI flags exist for local debugging and override
+environment values.
 
 | Environment variable | CLI flag | Required | Default | Purpose |
 | --- | --- | --- | --- | --- |
+| n/a | `--env-file` | no | unset | Docker-style dotenv file with ABS settings. |
 | `ABS_BASE_URL` | `--base-url` | yes | none | Audiobookshelf base URL. |
 | `ABS_API_KEY` | `--api-key` | yes | none | ABS API key or compatible bearer token. |
 | `ABS_READ_ONLY` | `--read-only` | no | `true` | Blocks mutating MCP tools when true. |
@@ -51,6 +53,13 @@ with `ABS_EXTRA_HEADERS_FILE`, with explicit header flags overriding duplicate
 file headers. Do not provide an environment variable for individual headers;
 use the header file for containerized or secret-bearing configuration.
 
+Support `--env-file PATH` for desktop MCP clients that can pass arguments but
+should not embed secrets directly in JSON config. Parse simple Docker-style
+dotenv lines: `KEY=value`, `KEY="value"`, `KEY='value'`, blank lines, comments,
+and optional `export` prefixes. Apply env-file values as defaults so precedence
+is explicit CLI flags, process environment, env file, then built-in defaults.
+Ignore unknown env-file keys.
+
 For corporate and self-signed TLS, support a CA bundle file first. The insecure
 skip-verify option exists only as an explicit temporary fallback and should
 default to false.
@@ -64,10 +73,11 @@ appropriate server-to-server automation credential.
 Implement `cmd/abs-mcp` as a Cobra root command that:
 
 1. Binds the configuration flags to a fresh Viper instance.
-2. Loads config from flags and environment variables.
-3. Constructs an authenticated ABS client.
-4. Sets an HTTP timeout and extra headers.
-5. Creates the MCP server and runs it over stdio.
+2. Applies `--env-file` values as Viper defaults when present.
+3. Loads config from flags, process environment, env file, and defaults.
+4. Constructs an authenticated ABS client.
+5. Sets an HTTP timeout and extra headers.
+6. Creates the MCP server and runs it over stdio.
 
 The binary should not log bearer tokens, API keys, cookies, or raw
 `Authorization` headers.
@@ -344,8 +354,9 @@ make abs-test-integration
 Expected coverage:
 
 - Config loading from env.
+- Config loading from `--env-file`.
 - Config loading from Cobra/Viper flags.
-- Flag-over-env precedence.
+- Flag-over-env-over-env-file precedence.
 - Extra header validation and Authorization rejection.
 - Header file and repeated `--header` merge behavior.
 - Corporate/private CA bundle trust.

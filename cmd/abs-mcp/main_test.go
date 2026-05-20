@@ -256,6 +256,85 @@ func TestRootCommandFlagsOverrideEnvConfiguration(t *testing.T) {
 	}
 }
 
+func TestRootCommandUsesEnvFileConfiguration(t *testing.T) {
+	envPath := filepath.Join(t.TempDir(), ".env")
+	if err := os.WriteFile(envPath, []byte(strings.Join([]string{
+		"ABS_BASE_URL=http://env-file.example",
+		"ABS_API_KEY=env-file-token",
+		"ABS_TIMEOUT=35s",
+		"ABS_READ_ONLY=false",
+		"ABS_FIXTURE_DIR=/tmp/env-file-fixture",
+		"ABS_TLS_INSECURE_SKIP_VERIFY=true",
+	}, "\n")), 0o600); err != nil {
+		t.Fatalf("write env file: %v", err)
+	}
+
+	var got config.Config
+	command := newRootCommand(context.Background(), func(ctx context.Context, cfg config.Config) error {
+		got = cfg
+		return nil
+	})
+	command.SetArgs([]string{"--env-file", envPath})
+
+	if err := command.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("ExecuteContext failed: %v", err)
+	}
+	if got.ABSBaseURL != "http://env-file.example" {
+		t.Fatalf("ABSBaseURL = %q", got.ABSBaseURL)
+	}
+	if got.ABSAPIKey != "env-file-token" {
+		t.Fatalf("ABSAPIKey = %q", got.ABSAPIKey)
+	}
+	if got.Timeout != 35*time.Second {
+		t.Fatalf("Timeout = %s, want 35s", got.Timeout)
+	}
+	if got.ReadOnly {
+		t.Fatal("ReadOnly = true, want false")
+	}
+	if got.FixtureDir != "/tmp/env-file-fixture" {
+		t.Fatalf("FixtureDir = %q", got.FixtureDir)
+	}
+	if !got.TLSSkipVerify {
+		t.Fatal("TLSSkipVerify = false, want true")
+	}
+}
+
+func TestRootCommandPrecedenceFlagsEnvThenEnvFile(t *testing.T) {
+	envPath := filepath.Join(t.TempDir(), ".env")
+	if err := os.WriteFile(envPath, []byte(strings.Join([]string{
+		"ABS_BASE_URL=http://env-file.example",
+		"ABS_API_KEY=env-file-token",
+		"ABS_READ_ONLY=true",
+	}, "\n")), 0o600); err != nil {
+		t.Fatalf("write env file: %v", err)
+	}
+	t.Setenv("ABS_BASE_URL", "http://process-env.example")
+
+	var got config.Config
+	command := newRootCommand(context.Background(), func(ctx context.Context, cfg config.Config) error {
+		got = cfg
+		return nil
+	})
+	command.SetArgs([]string{
+		"--env-file", envPath,
+		"--base-url", "http://flag.example",
+		"--read-only=false",
+	})
+
+	if err := command.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("ExecuteContext failed: %v", err)
+	}
+	if got.ABSBaseURL != "http://flag.example" {
+		t.Fatalf("ABSBaseURL = %q", got.ABSBaseURL)
+	}
+	if got.ABSAPIKey != "env-file-token" {
+		t.Fatalf("ABSAPIKey = %q", got.ABSAPIKey)
+	}
+	if got.ReadOnly {
+		t.Fatal("ReadOnly = true, want false")
+	}
+}
+
 func TestHTTPClientTrustsConfiguredCACertFile(t *testing.T) {
 	t.Parallel()
 

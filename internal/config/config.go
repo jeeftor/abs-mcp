@@ -17,6 +17,7 @@ const (
 
 	KeyBaseURL          = "base-url"
 	KeyAPIKey           = "api-key"
+	KeyEnvFile          = "env-file"
 	KeyTimeout          = "timeout"
 	KeyReadOnly         = "read-only"
 	KeyFixtureDir       = "fixture-dir"
@@ -25,6 +26,17 @@ const (
 	KeyTLSCACertFile    = "tls-ca-cert-file"
 	KeyTLSSkipVerify    = "tls-insecure-skip-verify"
 )
+
+var envFileKeys = map[string]string{
+	"ABS_BASE_URL":                 KeyBaseURL,
+	"ABS_API_KEY":                  KeyAPIKey,
+	"ABS_TIMEOUT":                  KeyTimeout,
+	"ABS_READ_ONLY":                KeyReadOnly,
+	"ABS_FIXTURE_DIR":              KeyFixtureDir,
+	"ABS_EXTRA_HEADERS_FILE":       KeyExtraHeadersFile,
+	"ABS_TLS_CA_CERT_FILE":         KeyTLSCACertFile,
+	"ABS_TLS_INSECURE_SKIP_VERIFY": KeyTLSSkipVerify,
+}
 
 // Config contains runtime settings for the MCP server.
 type Config struct {
@@ -75,6 +87,53 @@ func NewViper() *viper.Viper {
 	settings.SetDefault(KeyReadOnly, "true")
 	settings.SetDefault(KeyFixtureDir, "test/abs")
 	return settings
+}
+
+// ApplyEnvFile loads Docker-style dotenv values as Viper defaults.
+func ApplyEnvFile(settings *viper.Viper, path string) error {
+	values, err := LoadEnvFile(path)
+	if err != nil {
+		return err
+	}
+	for envKey, value := range values {
+		configKey, ok := envFileKeys[envKey]
+		if !ok {
+			continue
+		}
+		settings.SetDefault(configKey, value)
+	}
+	return nil
+}
+
+// LoadEnvFile reads simple Docker-style KEY=VALUE lines.
+func LoadEnvFile(path string) (map[string]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read --env-file: %w", err)
+	}
+	values := map[string]string{}
+	for index, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		line = strings.TrimPrefix(line, "export ")
+		name, value, ok := strings.Cut(line, "=")
+		if !ok {
+			return nil, fmt.Errorf("parse --env-file line %d: expected KEY=VALUE", index+1)
+		}
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return nil, fmt.Errorf("parse --env-file line %d: key is required", index+1)
+		}
+		value = strings.TrimSpace(value)
+		unquoted, err := unquoteEnvFileValue(value)
+		if err != nil {
+			return nil, fmt.Errorf("parse --env-file line %d: %w", index+1, err)
+		}
+		values[name] = unquoted
+	}
+	return values, nil
 }
 
 // LoadFromViper reads configuration from a Cobra/Viper-backed settings source.
@@ -149,6 +208,24 @@ func lookupString(lookup func(string) (string, bool), key string) string {
 		return ""
 	}
 	return strings.TrimSpace(value)
+}
+
+func unquoteEnvFileValue(value string) (string, error) {
+	if value == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(value, `"`) || strings.HasPrefix(value, `'`) {
+		quote := value[:1]
+		if !strings.HasSuffix(value, quote) || len(value) == 1 {
+			return "", fmt.Errorf("quoted value is not closed")
+		}
+		value = value[1 : len(value)-1]
+		if quote == `"` {
+			value = strings.ReplaceAll(value, `\"`, `"`)
+			value = strings.ReplaceAll(value, `\\`, `\`)
+		}
+	}
+	return value, nil
 }
 
 type sourceValues struct {

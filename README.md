@@ -41,8 +41,8 @@ Prompts:
 
 ## Configuration
 
-Environment variables are the preferred configuration path for MCP clients,
-containers, and other launchers that inject secrets:
+Environment variables and env files are the preferred configuration paths for
+MCP clients, containers, and other launchers that inject secrets:
 
 ```bash
 export ABS_BASE_URL=http://localhost:13388
@@ -55,11 +55,19 @@ export ABS_TLS_CA_CERT_FILE=/path/to/corporate-ca.pem
 export ABS_TLS_INSECURE_SKIP_VERIFY=false
 ```
 
-The server also accepts matching Cobra/Viper CLI flags. Explicit flags override
-environment variables:
+The server can load those same values from a Docker-style env file:
+
+```bash
+go run ./cmd/abs-mcp --env-file /path/to/.env
+```
+
+The server also accepts matching Cobra/Viper CLI flags. Precedence is explicit
+CLI flags, then process environment variables, then `--env-file`, then built-in
+defaults:
 
 ```bash
 go run ./cmd/abs-mcp \
+  --env-file /path/to/.env \
   --base-url http://localhost:13388 \
   --api-key ... \
   --read-only=true \
@@ -76,6 +84,7 @@ tokens do not land in shell history or process listings.
 
 | Environment variable | CLI flag | Default |
 | --- | --- | --- |
+| n/a | `--env-file` | unset |
 | `ABS_BASE_URL` | `--base-url` | required |
 | `ABS_API_KEY` | `--api-key` | required |
 | `ABS_READ_ONLY` | `--read-only` | `true` |
@@ -87,6 +96,10 @@ tokens do not land in shell history or process listings.
 | `ABS_TLS_INSECURE_SKIP_VERIFY` | `--tls-insecure-skip-verify` | `false` |
 
 `ABS_EXTRA_HEADERS_FILE` is optional. When set, it must point to a JSON object of string header names to string values, for example `{"X-Corp-Trace":"trace-1"}`. `Authorization` is rejected there; use `ABS_API_KEY` for Audiobookshelf authentication.
+
+`--env-file` supports simple Docker-style dotenv lines such as `KEY=value`,
+`KEY="value"`, `KEY='value'`, blank lines, comments, and optional `export`
+prefixes. Unknown keys are ignored by the MCP server.
 
 Use `--header NAME=VALUE` for quick local header injection. It is repeatable,
 and duplicate names override values from `ABS_EXTRA_HEADERS_FILE`. Prefer the
@@ -102,6 +115,24 @@ Run over MCP stdio:
 
 ```bash
 go run ./cmd/abs-mcp
+```
+
+Example Windsurf MCP config using an env file:
+
+```json
+{
+  "mcpServers": {
+    "Audiobookshelf": {
+      "command": "/Users/Shared/Docker/abs-mcp/bin/abs-mcp",
+      "args": [
+        "--env-file",
+        "/Users/Shared/Docker/abs-mcp/.env",
+        "--extra-headers-file",
+        "/Users/Shared/Docker/abs-mcp/cf-headers.json"
+      ]
+    }
+  }
+}
 ```
 
 Run the container image over MCP stdio:

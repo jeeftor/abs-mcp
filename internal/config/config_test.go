@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -222,6 +223,139 @@ func TestLoadFromViperRejectsInvalidHeaderFlags(t *testing.T) {
 				t.Fatal("expected invalid header flag error")
 			}
 		})
+	}
+}
+
+func TestLoadEnvFile(t *testing.T) {
+	t.Parallel()
+
+	envPath := filepath.Join(t.TempDir(), ".env")
+	if err := os.WriteFile(envPath, []byte(strings.Join([]string{
+		"# comment",
+		"ABS_BASE_URL=https://abs.example.com",
+		"ABS_API_KEY=\"quoted-token\"",
+		"export ABS_TIMEOUT='45s'",
+		"ABS_READ_ONLY=false",
+		"ABS_EXTRA_HEADERS_FILE=cf-headers.json",
+		"",
+	}, "\n")), 0o600); err != nil {
+		t.Fatalf("write env file: %v", err)
+	}
+
+	values, err := LoadEnvFile(envPath)
+	if err != nil {
+		t.Fatalf("LoadEnvFile failed: %v", err)
+	}
+	if values["ABS_BASE_URL"] != "https://abs.example.com" {
+		t.Fatalf("ABS_BASE_URL = %q", values["ABS_BASE_URL"])
+	}
+	if values["ABS_API_KEY"] != "quoted-token" {
+		t.Fatalf("ABS_API_KEY = %q", values["ABS_API_KEY"])
+	}
+	if values["ABS_TIMEOUT"] != "45s" {
+		t.Fatalf("ABS_TIMEOUT = %q", values["ABS_TIMEOUT"])
+	}
+	if values["ABS_READ_ONLY"] != "false" {
+		t.Fatalf("ABS_READ_ONLY = %q", values["ABS_READ_ONLY"])
+	}
+	if values["ABS_EXTRA_HEADERS_FILE"] != "cf-headers.json" {
+		t.Fatalf("ABS_EXTRA_HEADERS_FILE = %q", values["ABS_EXTRA_HEADERS_FILE"])
+	}
+}
+
+func TestLoadEnvFileRejectsInvalidLines(t *testing.T) {
+	t.Parallel()
+
+	for name, content := range map[string]string{
+		"missing equals": "ABS_BASE_URL",
+		"empty key":      "=value",
+		"open quote":     `ABS_API_KEY="token`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			envPath := filepath.Join(t.TempDir(), ".env")
+			if err := os.WriteFile(envPath, []byte(content), 0o600); err != nil {
+				t.Fatalf("write env file: %v", err)
+			}
+			if _, err := LoadEnvFile(envPath); err == nil {
+				t.Fatal("expected invalid env file error")
+			}
+		})
+	}
+}
+
+func TestApplyEnvFileProvidesDefaults(t *testing.T) {
+	t.Parallel()
+
+	envPath := filepath.Join(t.TempDir(), ".env")
+	if err := os.WriteFile(envPath, []byte(strings.Join([]string{
+		"ABS_BASE_URL=https://env-file.example",
+		"ABS_API_KEY=env-file-token",
+		"ABS_TIMEOUT=45s",
+		"ABS_READ_ONLY=false",
+		"ABS_FIXTURE_DIR=/tmp/env-file-fixture",
+		"ABS_TLS_INSECURE_SKIP_VERIFY=true",
+	}, "\n")), 0o600); err != nil {
+		t.Fatalf("write env file: %v", err)
+	}
+
+	settings := NewViper()
+	if err := ApplyEnvFile(settings, envPath); err != nil {
+		t.Fatalf("ApplyEnvFile failed: %v", err)
+	}
+	cfg, err := LoadFromViper(settings)
+	if err != nil {
+		t.Fatalf("LoadFromViper failed: %v", err)
+	}
+	if cfg.ABSBaseURL != "https://env-file.example" {
+		t.Fatalf("ABSBaseURL = %q", cfg.ABSBaseURL)
+	}
+	if cfg.ABSAPIKey != "env-file-token" {
+		t.Fatalf("ABSAPIKey = %q", cfg.ABSAPIKey)
+	}
+	if cfg.Timeout != 45*time.Second {
+		t.Fatalf("Timeout = %s, want 45s", cfg.Timeout)
+	}
+	if cfg.ReadOnly {
+		t.Fatal("ReadOnly = true, want false")
+	}
+	if cfg.FixtureDir != "/tmp/env-file-fixture" {
+		t.Fatalf("FixtureDir = %q", cfg.FixtureDir)
+	}
+	if !cfg.TLSSkipVerify {
+		t.Fatal("TLSSkipVerify = false, want true")
+	}
+}
+
+func TestProcessEnvOverridesEnvFile(t *testing.T) {
+	envPath := filepath.Join(t.TempDir(), ".env")
+	if err := os.WriteFile(envPath, []byte(strings.Join([]string{
+		"ABS_BASE_URL=https://env-file.example",
+		"ABS_API_KEY=env-file-token",
+		"ABS_READ_ONLY=true",
+	}, "\n")), 0o600); err != nil {
+		t.Fatalf("write env file: %v", err)
+	}
+
+	t.Setenv("ABS_BASE_URL", "https://process-env.example")
+	t.Setenv("ABS_READ_ONLY", "false")
+
+	settings := NewViper()
+	if err := ApplyEnvFile(settings, envPath); err != nil {
+		t.Fatalf("ApplyEnvFile failed: %v", err)
+	}
+	cfg, err := LoadFromViper(settings)
+	if err != nil {
+		t.Fatalf("LoadFromViper failed: %v", err)
+	}
+	if cfg.ABSBaseURL != "https://process-env.example" {
+		t.Fatalf("ABSBaseURL = %q", cfg.ABSBaseURL)
+	}
+	if cfg.ABSAPIKey != "env-file-token" {
+		t.Fatalf("ABSAPIKey = %q", cfg.ABSAPIKey)
+	}
+	if cfg.ReadOnly {
+		t.Fatal("ReadOnly = true, want false")
 	}
 }
 
