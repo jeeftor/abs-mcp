@@ -15,6 +15,7 @@ maintenance workflows.
 ## Table of Contents
 
 - [Highlights](#highlights)
+- [Audiobook Organizer Compatibility](#audiobook-organizer-compatibility)
 - [Quick Start](#quick-start)
 - [MCP Surface](#mcp-surface)
 - [Configuration](#configuration)
@@ -37,6 +38,22 @@ maintenance workflows.
   fixture tests.
 - Publishes release binaries and a GHCR image suitable for official MCP
   Registry metadata.
+
+## Audiobook Organizer Compatibility
+
+I built this MCP server to work especially well alongside
+[jeeftor/audiobook-organizer](https://github.com/jeeftor/audiobook-organizer).
+While it exposes the normal Audiobookshelf MCP tools for inspecting libraries,
+items, metadata, and server state, one of its most useful workflows is auditing
+whether books are actually organized the way you expect on disk.
+
+The `abs_find_misorganized_items` tool checks Audiobookshelf item paths against
+supported folder layout conventions, including author/title and
+author/series/title structures. It is audit-only, so it reports likely
+misconfigured or misplaced books without moving or deleting files. That makes it
+a good companion to Audiobook Organizer: use this MCP server to identify layout
+problems from Audiobookshelf's perspective, then use Audiobook Organizer to
+clean up or standardize the underlying files.
 
 ## Quick Start
 
