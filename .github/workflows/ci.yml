@@ -16,8 +16,18 @@ env:
 
 jobs:
   test:
-    name: Test
+    name: Test (${{ matrix.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: go
+            command: go test ./...
+          - name: scripts
+            command: python3 -m unittest discover -s scripts -p 'test_*.py'
+          - name: build
+            command: make build
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -28,14 +38,37 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run unit tests
-        run: make test-unit
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.command }}
 
-      - name: Run Go package tests
-        run: go test ./...
+  abs-integration:
+    name: ABS Integration (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api-fixture
+            test: TestABSFixtureLibrariesAndItems
+          - name: mcp-stdio-fixture
+            test: TestMCPServerAgainstABSFixture
+    env:
+      ABS_IMAGE: ghcr.io/advplyr/audiobookshelf:latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
 
-      - name: Build binary
-        run: make build
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Prepare ABS fixture
+        run: make abs-ci-smoke
+
+      - name: Run ${{ matrix.name }}
+        run: go test -tags=abs_integration ./test/abs/integration -count=1 -run '^${{ matrix.test }}$' -v
 
   docker:
     name: Docker Build

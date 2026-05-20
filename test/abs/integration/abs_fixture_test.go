@@ -488,6 +488,43 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 	if !metadataHealth.OK || !metadataHealth.ReadOnly || metadataHealth.LibraryCount != 2 {
 		t.Fatalf("unexpected metadata health output: %#v", metadataHealth)
 	}
+	metadataLibrariesResult, err := metadataSession.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_list_libraries",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("call metadata abs_list_libraries: %v", err)
+	}
+	if metadataLibrariesResult.IsError {
+		t.Fatalf("metadata abs_list_libraries returned tool error: %#v", metadataLibrariesResult.Content)
+	}
+	var metadataLibraries mcpserver.LibrariesOutput
+	unmarshalStructuredOutput(t, metadataLibrariesResult.StructuredContent, &metadataLibraries)
+	metadataLibraryByName := make(map[string]mcpserver.LibrarySummary, len(metadataLibraries.Libraries))
+	for _, library := range metadataLibraries.Libraries {
+		metadataLibraryByName[library.Name] = library
+	}
+	metadataAudioLibrary, ok := metadataLibraryByName["Audiobooks"]
+	if !ok {
+		t.Fatalf("metadata Audiobooks library not found in MCP output: %#v", metadataLibraries.Libraries)
+	}
+	metadataLayoutResult, err := metadataSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_find_misorganized_items",
+		Arguments: map[string]any{
+			"libraryId":  metadataAudioLibrary.ID,
+			"convention": "author-title",
+			"limit":      env.ExpectedAudiobook,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call metadata abs_find_misorganized_items: %v", err)
+	}
+	if metadataLayoutResult.IsError {
+		t.Fatalf("metadata abs_find_misorganized_items returned tool error: %#v", metadataLayoutResult.Content)
+	}
+	var metadataLayout mcpserver.FindMisorganizedItemsOutput
+	unmarshalStructuredOutput(t, metadataLayoutResult.StructuredContent, &metadataLayout)
+	assertMessyAudiobookLayoutFindings(t, metadataLayout, env.ExpectedAudiobook)
 
 	prompts, err := session.ListPrompts(ctx, &mcp.ListPromptsParams{})
 	if err != nil {
@@ -620,6 +657,47 @@ func indexLibrariesByName(libraries []abs.Library) map[string]abs.Library {
 		byName[lib.Name] = lib
 	}
 	return byName
+}
+
+func assertMessyAudiobookLayoutFindings(
+	t *testing.T,
+	output mcpserver.FindMisorganizedItemsOutput,
+	expectedCount int,
+) {
+	t.Helper()
+
+	if output.CheckedCount != expectedCount || output.MisorganizedCount != expectedCount || output.UnclassifiableCount != 0 {
+		t.Fatalf("unexpected layout audit counts for messy metadata fixture: %#v", output)
+	}
+	if output.ReturnedCount != expectedCount || output.Truncated {
+		t.Fatalf("unexpected returned layout findings for messy metadata fixture: %#v", output)
+	}
+	if output.Convention != "author-title" {
+		t.Fatalf("layout convention = %q, want author-title", output.Convention)
+	}
+
+	foundAlice := false
+	foundCarol := false
+	for _, item := range output.Items {
+		if item.Organized || !item.Classifiable {
+			t.Fatalf("expected classifiable misorganized item, got %#v", item)
+		}
+		if len(item.Reasons) == 0 {
+			t.Fatalf("expected mismatch reasons for item %#v", item)
+		}
+		if item.ExpectedRelPath == "" || item.CurrentRelPath == "" {
+			t.Fatalf("expected current and expected paths for item %#v", item)
+		}
+		if strings.Contains(item.CurrentRelPath, "unsorted-audio/drop-001") && strings.Contains(item.ExpectedRelPath, "Lewis Carroll/") {
+			foundAlice = true
+		}
+		if strings.Contains(item.CurrentRelPath, "loose") && strings.Contains(item.ExpectedRelPath, "Charles Dickens/") {
+			foundCarol = true
+		}
+	}
+	if !foundAlice || !foundCarol {
+		t.Fatalf("expected Alice and Christmas Carol messy fixture findings, got %#v", output.Items)
+	}
 }
 
 func findScannableItemID(t *testing.T, ctx context.Context, baseURL string, token string, libraryID string) string {
