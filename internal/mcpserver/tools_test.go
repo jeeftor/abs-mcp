@@ -438,8 +438,8 @@ func TestScanLibraryBlockedInReadOnlyMode(t *testing.T) {
 	if _, _, err := server.ScanLibrary(context.Background(), nil, ScanLibraryInput{
 		LibraryID: "lib-audio",
 		Force:     true,
-	}); err == nil {
-		t.Fatal("expected read-only error")
+	}); err == nil || !strings.Contains(err.Error(), "--read-only=false") {
+		t.Fatalf("expected actionable read-only error, got %v", err)
 	}
 }
 
@@ -482,8 +482,8 @@ func TestRemoveLibraryItemsWithIssuesBlockedInReadOnlyMode(t *testing.T) {
 	if _, _, err := server.RemoveLibraryItemsWithIssues(context.Background(), nil, RemoveLibraryItemsWithIssuesInput{
 		LibraryID:    "lib-audio",
 		Confirmation: "remove issues from lib-audio",
-	}); err == nil {
-		t.Fatal("expected read-only error")
+	}); err == nil || !strings.Contains(err.Error(), "--read-only=false") {
+		t.Fatalf("expected actionable read-only error, got %v", err)
 	}
 }
 
@@ -574,8 +574,8 @@ func TestScanItemBlockedInReadOnlyMode(t *testing.T) {
 	t.Parallel()
 
 	server := newTestServer()
-	if _, _, err := server.ScanItem(context.Background(), nil, ScanItemInput{ItemID: "item-1"}); err == nil {
-		t.Fatal("expected read-only error")
+	if _, _, err := server.ScanItem(context.Background(), nil, ScanItemInput{ItemID: "item-1"}); err == nil || !strings.Contains(err.Error(), "--read-only=false") {
+		t.Fatalf("expected actionable read-only error, got %v", err)
 	}
 }
 
@@ -611,6 +611,143 @@ func TestScanItemRequiresID(t *testing.T) {
 	}
 }
 
+func TestPlannedMutatingToolsBlockedInReadOnlyMode(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	tests := map[string]func() error{
+		"abs_update_item_metadata": func() error {
+			_, _, err := server.UpdateItemMetadata(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
+			return err
+		},
+		"abs_update_item_cover": func() error {
+			_, _, err := server.UpdateItemCover(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
+			return err
+		},
+		"abs_remove_item_cover": func() error {
+			_, _, err := server.RemoveItemCover(context.Background(), nil, ConfirmedItemInput{ItemID: "item-1", Confirmation: "remove cover from item-1"})
+			return err
+		},
+		"abs_match_item": func() error {
+			_, _, err := server.MatchItem(context.Background(), nil, MatchItemInput{ItemID: "item-1"})
+			return err
+		},
+		"abs_update_item_chapters": func() error {
+			_, _, err := server.UpdateItemChapters(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
+			return err
+		},
+		"abs_update_item_tracks": func() error {
+			_, _, err := server.UpdateItemTracks(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
+			return err
+		},
+		"abs_create_collection": func() error {
+			_, _, err := server.CreateCollection(context.Background(), nil, CollectionInput{Name: "Favorites"})
+			return err
+		},
+		"abs_update_collection": func() error {
+			_, _, err := server.UpdateCollection(context.Background(), nil, CollectionInput{CollectionID: "col-1"})
+			return err
+		},
+		"abs_delete_collection": func() error {
+			_, _, err := server.DeleteCollection(context.Background(), nil, ConfirmedCollectionInput{CollectionID: "col-1", Confirmation: "delete collection col-1"})
+			return err
+		},
+		"abs_add_collection_item": func() error {
+			_, _, err := server.AddCollectionItem(context.Background(), nil, CollectionItemInput{CollectionID: "col-1", ItemID: "item-1"})
+			return err
+		},
+		"abs_remove_collection_item": func() error {
+			_, _, err := server.RemoveCollectionItem(context.Background(), nil, CollectionItemInput{CollectionID: "col-1", ItemID: "item-1", Confirmation: "remove item item-1 from collection col-1"})
+			return err
+		},
+		"abs_create_playlist": func() error {
+			_, _, err := server.CreatePlaylist(context.Background(), nil, PlaylistInput{Name: "Queue"})
+			return err
+		},
+		"abs_update_playlist": func() error {
+			_, _, err := server.UpdatePlaylist(context.Background(), nil, PlaylistInput{PlaylistID: "pl-1"})
+			return err
+		},
+		"abs_delete_playlist": func() error {
+			_, _, err := server.DeletePlaylist(context.Background(), nil, ConfirmedPlaylistInput{PlaylistID: "pl-1", Confirmation: "delete playlist pl-1"})
+			return err
+		},
+		"abs_add_playlist_item": func() error {
+			_, _, err := server.AddPlaylistItem(context.Background(), nil, PlaylistItemInput{PlaylistID: "pl-1", ItemID: "item-1"})
+			return err
+		},
+		"abs_remove_playlist_item": func() error {
+			_, _, err := server.RemovePlaylistItem(context.Background(), nil, PlaylistItemInput{PlaylistID: "pl-1", ItemID: "item-1", Confirmation: "remove item item-1 from playlist pl-1"})
+			return err
+		},
+	}
+
+	for toolName, call := range tests {
+		err := call()
+		if err == nil {
+			t.Fatalf("%s: expected read-only error", toolName)
+		}
+		if !strings.Contains(err.Error(), "ABS_READ_ONLY=true") || !strings.Contains(err.Error(), "--read-only=false") {
+			t.Fatalf("%s: expected actionable read-only error, got %v", toolName, err)
+		}
+	}
+}
+
+func TestPlannedMutatingToolsValidateInputBeforeImplementation(t *testing.T) {
+	t.Parallel()
+
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, newFakeABSClient())
+	if _, _, err := server.UpdateItemMetadata(context.Background(), nil, ItemPayloadInput{}); err == nil || !strings.Contains(err.Error(), "itemId") {
+		t.Fatalf("expected missing itemId error, got %v", err)
+	}
+	if _, _, err := server.RemoveItemCover(context.Background(), nil, ConfirmedItemInput{ItemID: "item-1", Confirmation: "yes"}); err == nil || !strings.Contains(err.Error(), "remove cover from item-1") {
+		t.Fatalf("expected cover confirmation error, got %v", err)
+	}
+	if _, _, err := server.DeleteCollection(context.Background(), nil, ConfirmedCollectionInput{CollectionID: "col-1", Confirmation: "yes"}); err == nil || !strings.Contains(err.Error(), "delete collection col-1") {
+		t.Fatalf("expected collection confirmation error, got %v", err)
+	}
+	if _, _, err := server.RemoveCollectionItem(context.Background(), nil, CollectionItemInput{CollectionID: "col-1", ItemID: "item-1", Confirmation: "yes"}); err == nil || !strings.Contains(err.Error(), "remove item item-1 from collection col-1") {
+		t.Fatalf("expected collection item confirmation error, got %v", err)
+	}
+	if _, _, err := server.DeletePlaylist(context.Background(), nil, ConfirmedPlaylistInput{PlaylistID: "pl-1", Confirmation: "yes"}); err == nil || !strings.Contains(err.Error(), "delete playlist pl-1") {
+		t.Fatalf("expected playlist confirmation error, got %v", err)
+	}
+	if _, _, err := server.RemovePlaylistItem(context.Background(), nil, PlaylistItemInput{PlaylistID: "pl-1", ItemID: "item-1", Confirmation: "yes"}); err == nil || !strings.Contains(err.Error(), "remove item item-1 from playlist pl-1") {
+		t.Fatalf("expected playlist item confirmation error, got %v", err)
+	}
+}
+
+func TestPlannedMutatingToolsAreNotImplementedWithReadOnlyDisabled(t *testing.T) {
+	t.Parallel()
+
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, newFakeABSClient())
+	tests := map[string]func() error{
+		"abs_update_item_metadata": func() error {
+			_, _, err := server.UpdateItemMetadata(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
+			return err
+		},
+		"abs_remove_item_cover": func() error {
+			_, _, err := server.RemoveItemCover(context.Background(), nil, ConfirmedItemInput{ItemID: "item-1", Confirmation: "remove cover from item-1"})
+			return err
+		},
+		"abs_create_collection": func() error {
+			_, _, err := server.CreateCollection(context.Background(), nil, CollectionInput{Name: "Favorites"})
+			return err
+		},
+		"abs_delete_playlist": func() error {
+			_, _, err := server.DeletePlaylist(context.Background(), nil, ConfirmedPlaylistInput{PlaylistID: "pl-1", Confirmation: "delete playlist pl-1"})
+			return err
+		},
+	}
+
+	for toolName, call := range tests {
+		err := call()
+		if err == nil || !strings.Contains(err.Error(), "not implemented yet") {
+			t.Fatalf("%s: expected not implemented error, got %v", toolName, err)
+		}
+	}
+}
+
 func TestScanLibraryAndWaitBlockedInReadOnlyMode(t *testing.T) {
 	t.Parallel()
 
@@ -618,8 +755,8 @@ func TestScanLibraryAndWaitBlockedInReadOnlyMode(t *testing.T) {
 	if _, _, err := server.ScanLibraryAndWait(context.Background(), nil, ScanLibraryAndWaitInput{
 		LibraryID:     "lib-audio",
 		ExpectedTotal: 3,
-	}); err == nil {
-		t.Fatal("expected read-only error")
+	}); err == nil || !strings.Contains(err.Error(), "--read-only=false") {
+		t.Fatalf("expected actionable read-only error, got %v", err)
 	}
 }
 

@@ -63,6 +63,28 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	if !toolNames(tools)["abs_find_misorganized_items"] {
 		t.Fatalf("expected abs_find_misorganized_items in tools: %#v", tools.Tools)
 	}
+	for _, toolName := range []string{
+		"abs_update_item_metadata",
+		"abs_update_item_cover",
+		"abs_remove_item_cover",
+		"abs_match_item",
+		"abs_update_item_chapters",
+		"abs_update_item_tracks",
+		"abs_create_collection",
+		"abs_update_collection",
+		"abs_delete_collection",
+		"abs_add_collection_item",
+		"abs_remove_collection_item",
+		"abs_create_playlist",
+		"abs_update_playlist",
+		"abs_delete_playlist",
+		"abs_add_playlist_item",
+		"abs_remove_playlist_item",
+	} {
+		if !toolNames(tools)[toolName] {
+			t.Fatalf("expected %s in tools: %#v", toolName, tools.Tools)
+		}
+	}
 
 	resources, err := session.ListResources(ctx, &mcp.ListResourcesParams{})
 	if err != nil {
@@ -260,6 +282,19 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	}
 	if !removeIssuesReadOnlyResult.IsError {
 		t.Fatal("expected abs_remove_library_items_with_issues to be a tool error in read-only mode")
+	}
+
+	metadataUpdateReadOnlyResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_update_item_metadata",
+		Arguments: map[string]any{
+			"itemId": "item-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_update_item_metadata: %v", err)
+	}
+	if !metadataUpdateReadOnlyResult.IsError {
+		t.Fatal("expected abs_update_item_metadata to be a tool error in read-only mode")
 	}
 
 	if err := session.Close(); err != nil {

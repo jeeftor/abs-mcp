@@ -95,9 +95,28 @@ For client-specific snippets, see [Client Configs](#client-configs).
 - `abs_scan_library`
 - `abs_scan_library_and_wait`
 - `abs_scan_item`
+- `abs_update_item_metadata`
+- `abs_update_item_cover`
+- `abs_remove_item_cover`
+- `abs_match_item`
+- `abs_update_item_chapters`
+- `abs_update_item_tracks`
+- `abs_create_collection`
+- `abs_update_collection`
+- `abs_delete_collection`
+- `abs_add_collection_item`
+- `abs_remove_collection_item`
+- `abs_create_playlist`
+- `abs_update_playlist`
+- `abs_delete_playlist`
+- `abs_add_playlist_item`
+- `abs_remove_playlist_item`
 - `abs_remove_library_items_with_issues`
 
-Scan tools are blocked by default because `ABS_READ_ONLY` defaults to `true`.
+Mutating tools are blocked by default because `ABS_READ_ONLY` defaults to
+`true`. Planned mutating tools are advertised for discovery but return a
+not-implemented error after read-only and confirmation checks until their ABS
+source and fixture behavior are verified.
 
 ### Resources
 
@@ -206,7 +225,28 @@ These tools can mutate Audiobookshelf state and require `ABS_READ_ONLY=false`:
 - `abs_scan_library`
 - `abs_scan_library_and_wait`
 - `abs_scan_item`
+- `abs_update_item_metadata`
+- `abs_update_item_cover`
+- `abs_remove_item_cover`
+- `abs_match_item`
+- `abs_update_item_chapters`
+- `abs_update_item_tracks`
+- `abs_create_collection`
+- `abs_update_collection`
+- `abs_delete_collection`
+- `abs_add_collection_item`
+- `abs_remove_collection_item`
+- `abs_create_playlist`
+- `abs_update_playlist`
+- `abs_delete_playlist`
+- `abs_add_playlist_item`
+- `abs_remove_playlist_item`
 - `abs_remove_library_items_with_issues`
+
+The newly advertised item, collection, and playlist mutation tools are stubs:
+they validate read-only mode and destructive confirmations, then return a clear
+not-implemented error until their Audiobookshelf source and Docker fixture
+behavior are verified.
 
 `abs_remove_library_items_with_issues` also requires the exact confirmation
 string `remove issues from <libraryId>` and can check an expected issue count

@@ -125,6 +125,86 @@ func (s *Server) MCPServer() *mcp.Server {
 		Description: "Rescan one directory-backed Audiobookshelf library item by ID. Blocked when ABS_READ_ONLY is true.",
 	}, s.ScanItem)
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_update_item_metadata",
+		Title:       "Update Audiobookshelf item metadata",
+		Description: "Planned tool for updating selected metadata on one item. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.UpdateItemMetadata)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_update_item_cover",
+		Title:       "Update Audiobookshelf item cover",
+		Description: "Planned tool for updating one item cover. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.UpdateItemCover)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_remove_item_cover",
+		Title:       "Remove Audiobookshelf item cover",
+		Description: "Planned destructive tool for removing one item cover. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+	}, s.RemoveItemCover)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_match_item",
+		Title:       "Match Audiobookshelf item metadata",
+		Description: "Planned tool for running Audiobookshelf item matching. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.MatchItem)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_update_item_chapters",
+		Title:       "Update Audiobookshelf item chapters",
+		Description: "Planned tool for replacing item chapters. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.UpdateItemChapters)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_update_item_tracks",
+		Title:       "Update Audiobookshelf item tracks",
+		Description: "Planned tool for replacing item tracks. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.UpdateItemTracks)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_create_collection",
+		Title:       "Create Audiobookshelf collection",
+		Description: "Planned tool for creating a collection. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.CreateCollection)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_update_collection",
+		Title:       "Update Audiobookshelf collection",
+		Description: "Planned tool for updating a collection. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.UpdateCollection)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_delete_collection",
+		Title:       "Delete Audiobookshelf collection",
+		Description: "Planned destructive tool for deleting a collection. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+	}, s.DeleteCollection)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_add_collection_item",
+		Title:       "Add Audiobookshelf collection item",
+		Description: "Planned tool for adding an item to a collection. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.AddCollectionItem)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_remove_collection_item",
+		Title:       "Remove Audiobookshelf collection item",
+		Description: "Planned destructive tool for removing an item from a collection. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+	}, s.RemoveCollectionItem)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_create_playlist",
+		Title:       "Create Audiobookshelf playlist",
+		Description: "Planned tool for creating a playlist. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.CreatePlaylist)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_update_playlist",
+		Title:       "Update Audiobookshelf playlist",
+		Description: "Planned tool for updating a playlist. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.UpdatePlaylist)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_delete_playlist",
+		Title:       "Delete Audiobookshelf playlist",
+		Description: "Planned destructive tool for deleting a playlist. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+	}, s.DeletePlaylist)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_add_playlist_item",
+		Title:       "Add Audiobookshelf playlist item",
+		Description: "Planned tool for adding an item to a playlist. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+	}, s.AddPlaylistItem)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_remove_playlist_item",
+		Title:       "Remove Audiobookshelf playlist item",
+		Description: "Planned destructive tool for removing an item from a playlist. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+	}, s.RemovePlaylistItem)
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_remove_library_items_with_issues",
 		Title:       "Remove Audiobookshelf library items with issues",
 		Description: "Remove missing or invalid items from one Audiobookshelf library. Requires exact confirmation and is blocked when ABS_READ_ONLY is true.",
@@ -357,6 +437,75 @@ type ScanItemOutput struct {
 	Triggered bool   `json:"triggered" jsonschema:"Whether the scan request was sent."`
 	ItemID    string `json:"itemId" jsonschema:"Audiobookshelf library item ID requested for scanning."`
 	Result    string `json:"result,omitempty" jsonschema:"Audiobookshelf scan result string, when returned by ABS."`
+}
+
+// ItemPayloadInput identifies one planned item mutation with a caller-provided payload.
+type ItemPayloadInput struct {
+	ItemID  string        `json:"itemId" jsonschema:"Audiobookshelf library item ID to mutate."`
+	Payload abs.JSONValue `json:"payload,omitempty" jsonschema:"Planned mutation payload. Exact shape is not committed until source and fixture behavior are verified."`
+}
+
+// ConfirmedItemInput identifies one planned destructive item mutation.
+type ConfirmedItemInput struct {
+	ItemID       string `json:"itemId" jsonschema:"Audiobookshelf library item ID to mutate."`
+	Confirmation string `json:"confirmation" jsonschema:"Exact confirmation text required by the tool."`
+}
+
+// MatchItemInput identifies one planned item match request.
+type MatchItemInput struct {
+	ItemID       string        `json:"itemId" jsonschema:"Audiobookshelf library item ID to match."`
+	Provider     string        `json:"provider,omitempty" jsonschema:"Optional metadata provider to use when matching."`
+	Payload      abs.JSONValue `json:"payload,omitempty" jsonschema:"Planned match payload. Exact shape is not committed until source and fixture behavior are verified."`
+	Confirmation string        `json:"confirmation,omitempty" jsonschema:"Reserved for source-verified overwrite confirmation if matching is destructive."`
+}
+
+// CollectionInput identifies one planned collection create/update request.
+type CollectionInput struct {
+	CollectionID string        `json:"collectionId,omitempty" jsonschema:"Audiobookshelf collection ID for updates."`
+	Name         string        `json:"name,omitempty" jsonschema:"Collection name."`
+	Payload      abs.JSONValue `json:"payload,omitempty" jsonschema:"Planned collection payload. Exact shape is not committed until source and fixture behavior are verified."`
+}
+
+// ConfirmedCollectionInput identifies one planned destructive collection request.
+type ConfirmedCollectionInput struct {
+	CollectionID string `json:"collectionId" jsonschema:"Audiobookshelf collection ID to mutate."`
+	Confirmation string `json:"confirmation" jsonschema:"Exact confirmation text required by the tool."`
+}
+
+// CollectionItemInput identifies one planned collection item membership request.
+type CollectionItemInput struct {
+	CollectionID string `json:"collectionId" jsonschema:"Audiobookshelf collection ID to mutate."`
+	ItemID       string `json:"itemId" jsonschema:"Audiobookshelf library item ID to add or remove."`
+	Confirmation string `json:"confirmation,omitempty" jsonschema:"Exact confirmation text required for removal."`
+}
+
+// PlaylistInput identifies one planned playlist create/update request.
+type PlaylistInput struct {
+	PlaylistID string        `json:"playlistId,omitempty" jsonschema:"Audiobookshelf playlist ID for updates."`
+	Name       string        `json:"name,omitempty" jsonschema:"Playlist name."`
+	Payload    abs.JSONValue `json:"payload,omitempty" jsonschema:"Planned playlist payload. Exact shape is not committed until source and fixture behavior are verified."`
+}
+
+// ConfirmedPlaylistInput identifies one planned destructive playlist request.
+type ConfirmedPlaylistInput struct {
+	PlaylistID   string `json:"playlistId" jsonschema:"Audiobookshelf playlist ID to mutate."`
+	Confirmation string `json:"confirmation" jsonschema:"Exact confirmation text required by the tool."`
+}
+
+// PlaylistItemInput identifies one planned playlist item membership request.
+type PlaylistItemInput struct {
+	PlaylistID   string `json:"playlistId" jsonschema:"Audiobookshelf playlist ID to mutate."`
+	ItemID       string `json:"itemId" jsonschema:"Audiobookshelf library item ID to add or remove."`
+	EpisodeID    string `json:"episodeId,omitempty" jsonschema:"Optional podcast episode ID when mutating a podcast playlist item."`
+	Confirmation string `json:"confirmation,omitempty" jsonschema:"Exact confirmation text required for removal."`
+}
+
+// PlannedMutationOutput is reserved for future implemented mutating tools.
+type PlannedMutationOutput struct {
+	Triggered   bool   `json:"triggered" jsonschema:"Whether an Audiobookshelf mutation request was sent."`
+	Tool        string `json:"tool" jsonschema:"MCP tool name."`
+	Route       string `json:"route" jsonschema:"Audiobookshelf API route planned for this tool."`
+	Implemented bool   `json:"implemented" jsonschema:"Whether this planned mutation is implemented."`
 }
 
 // LibrarySummary is a compact library shape suitable for MCP output.
@@ -666,7 +815,7 @@ func (s *Server) ScanLibrary(
 	input ScanLibraryInput,
 ) (*mcp.CallToolResult, ScanLibraryOutput, error) {
 	if s.cfg.ReadOnly {
-		return nil, ScanLibraryOutput{}, fmt.Errorf("abs_scan_library is blocked because ABS_READ_ONLY is true")
+		return nil, ScanLibraryOutput{}, readOnlyToolError("abs_scan_library")
 	}
 	if input.LibraryID == "" {
 		return nil, ScanLibraryOutput{}, fmt.Errorf("libraryId is required")
@@ -688,7 +837,7 @@ func (s *Server) RemoveLibraryItemsWithIssues(
 	input RemoveLibraryItemsWithIssuesInput,
 ) (*mcp.CallToolResult, RemoveLibraryItemsWithIssuesOutput, error) {
 	if s.cfg.ReadOnly {
-		return nil, RemoveLibraryItemsWithIssuesOutput{}, fmt.Errorf("abs_remove_library_items_with_issues is blocked because ABS_READ_ONLY is true")
+		return nil, RemoveLibraryItemsWithIssuesOutput{}, readOnlyToolError("abs_remove_library_items_with_issues")
 	}
 	if input.LibraryID == "" {
 		return nil, RemoveLibraryItemsWithIssuesOutput{}, fmt.Errorf("libraryId is required")
@@ -740,7 +889,7 @@ func (s *Server) ScanLibraryAndWait(
 	input ScanLibraryAndWaitInput,
 ) (*mcp.CallToolResult, ScanLibraryAndWaitOutput, error) {
 	if s.cfg.ReadOnly {
-		return nil, ScanLibraryAndWaitOutput{}, fmt.Errorf("abs_scan_library_and_wait is blocked because ABS_READ_ONLY is true")
+		return nil, ScanLibraryAndWaitOutput{}, readOnlyToolError("abs_scan_library_and_wait")
 	}
 	if input.LibraryID == "" {
 		return nil, ScanLibraryAndWaitOutput{}, fmt.Errorf("libraryId is required")
@@ -813,7 +962,7 @@ func (s *Server) ScanItem(
 	input ScanItemInput,
 ) (*mcp.CallToolResult, ScanItemOutput, error) {
 	if s.cfg.ReadOnly {
-		return nil, ScanItemOutput{}, fmt.Errorf("abs_scan_item is blocked because ABS_READ_ONLY is true")
+		return nil, ScanItemOutput{}, readOnlyToolError("abs_scan_item")
 	}
 	if input.ItemID == "" {
 		return nil, ScanItemOutput{}, fmt.Errorf("itemId is required")
@@ -827,6 +976,293 @@ func (s *Server) ScanItem(
 		ItemID:    input.ItemID,
 		Result:    response.Result,
 	}, nil
+}
+
+// UpdateItemMetadata is a planned metadata mutation tool gated by read-only mode.
+func (s *Server) UpdateItemMetadata(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input ItemPayloadInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_update_item_metadata"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_item_metadata", "PATCH /api/items/:id/media")
+}
+
+// UpdateItemCover is a planned cover mutation tool gated by read-only mode.
+func (s *Server) UpdateItemCover(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input ItemPayloadInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_update_item_cover"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_item_cover", "PATCH|POST /api/items/:id/cover")
+}
+
+// RemoveItemCover is a planned destructive cover mutation tool gated by read-only mode.
+func (s *Server) RemoveItemCover(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input ConfirmedItemInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_remove_item_cover"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	expectedConfirmation := fmt.Sprintf("remove cover from %s", input.ItemID)
+	if input.Confirmation != expectedConfirmation {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_remove_item_cover", "DELETE /api/items/:id/cover")
+}
+
+// MatchItem is a planned item matching tool gated by read-only mode.
+func (s *Server) MatchItem(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input MatchItemInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_match_item"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_match_item", "POST /api/items/:id/match")
+}
+
+// UpdateItemChapters is a planned chapter mutation tool gated by read-only mode.
+func (s *Server) UpdateItemChapters(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input ItemPayloadInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_update_item_chapters"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_item_chapters", "POST /api/items/:id/chapters")
+}
+
+// UpdateItemTracks is a planned track mutation tool gated by read-only mode.
+func (s *Server) UpdateItemTracks(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input ItemPayloadInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_update_item_tracks"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_item_tracks", "PATCH /api/items/:id/tracks")
+}
+
+// CreateCollection is a planned collection mutation tool gated by read-only mode.
+func (s *Server) CreateCollection(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input CollectionInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_create_collection"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.Name == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("name is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_create_collection", "POST /api/collections")
+}
+
+// UpdateCollection is a planned collection mutation tool gated by read-only mode.
+func (s *Server) UpdateCollection(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input CollectionInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_update_collection"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.CollectionID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("collectionId is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_collection", "PATCH /api/collections/:id")
+}
+
+// DeleteCollection is a planned destructive collection mutation tool gated by read-only mode.
+func (s *Server) DeleteCollection(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input ConfirmedCollectionInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_delete_collection"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.CollectionID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("collectionId is required")
+	}
+	expectedConfirmation := fmt.Sprintf("delete collection %s", input.CollectionID)
+	if input.Confirmation != expectedConfirmation {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_delete_collection", "DELETE /api/collections/:id")
+}
+
+// AddCollectionItem is a planned collection membership tool gated by read-only mode.
+func (s *Server) AddCollectionItem(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input CollectionItemInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_add_collection_item"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.CollectionID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("collectionId is required")
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_add_collection_item", "POST /api/collections/:id/book")
+}
+
+// RemoveCollectionItem is a planned destructive collection membership tool gated by read-only mode.
+func (s *Server) RemoveCollectionItem(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input CollectionItemInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_remove_collection_item"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.CollectionID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("collectionId is required")
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	expectedConfirmation := fmt.Sprintf("remove item %s from collection %s", input.ItemID, input.CollectionID)
+	if input.Confirmation != expectedConfirmation {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_remove_collection_item", "DELETE /api/collections/:id/book/:bookId")
+}
+
+// CreatePlaylist is a planned playlist mutation tool gated by read-only mode.
+func (s *Server) CreatePlaylist(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input PlaylistInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_create_playlist"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.Name == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("name is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_create_playlist", "POST /api/playlists")
+}
+
+// UpdatePlaylist is a planned playlist mutation tool gated by read-only mode.
+func (s *Server) UpdatePlaylist(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input PlaylistInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_update_playlist"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.PlaylistID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("playlistId is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_playlist", "PATCH /api/playlists/:id")
+}
+
+// DeletePlaylist is a planned destructive playlist mutation tool gated by read-only mode.
+func (s *Server) DeletePlaylist(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input ConfirmedPlaylistInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_delete_playlist"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.PlaylistID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("playlistId is required")
+	}
+	expectedConfirmation := fmt.Sprintf("delete playlist %s", input.PlaylistID)
+	if input.Confirmation != expectedConfirmation {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_delete_playlist", "DELETE /api/playlists/:id")
+}
+
+// AddPlaylistItem is a planned playlist membership tool gated by read-only mode.
+func (s *Server) AddPlaylistItem(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input PlaylistItemInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_add_playlist_item"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.PlaylistID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("playlistId is required")
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_add_playlist_item", "POST /api/playlists/:id/item")
+}
+
+// RemovePlaylistItem is a planned destructive playlist membership tool gated by read-only mode.
+func (s *Server) RemovePlaylistItem(
+	_ context.Context,
+	_ *mcp.CallToolRequest,
+	input PlaylistItemInput,
+) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_remove_playlist_item"); err != nil {
+		return nil, PlannedMutationOutput{}, err
+	}
+	if input.PlaylistID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("playlistId is required")
+	}
+	if input.ItemID == "" {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	expectedConfirmation := fmt.Sprintf("remove item %s from playlist %s", input.ItemID, input.PlaylistID)
+	if input.Confirmation != expectedConfirmation {
+		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+	}
+	return nil, PlannedMutationOutput{}, plannedToolError("abs_remove_playlist_item", "DELETE /api/playlists/:id/item/:libraryItemId/:episodeId?")
+}
+
+func (s *Server) requireMutatingTool(toolName string) error {
+	if s.cfg.ReadOnly {
+		return readOnlyToolError(toolName)
+	}
+	return nil
+}
+
+func readOnlyToolError(toolName string) error {
+	return fmt.Errorf("%s is not usable while ABS_READ_ONLY=true. To use this mutating tool, restart abs-mcp with ABS_READ_ONLY=false or --read-only=false after confirming the Audiobookshelf operation is safe", toolName)
+}
+
+func plannedToolError(toolName string, route string) error {
+	return fmt.Errorf("%s is registered but not implemented yet; planned ABS route %s requires source and fixture verification before this MCP server will mutate Audiobookshelf", toolName, route)
 }
 
 func normalizeLimit(limit int) (int, error) {
