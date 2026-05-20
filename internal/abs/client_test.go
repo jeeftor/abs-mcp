@@ -480,6 +480,110 @@ func TestClientScanItem(t *testing.T) {
 	}
 }
 
+func TestClientUpdateItemCover(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPatch {
+			t.Fatalf("method = %s, want PATCH", request.Method)
+		}
+		if request.URL.Path != "/api/items/item-1/cover" {
+			t.Fatalf("path = %s, want /api/items/item-1/cover", request.URL.Path)
+		}
+		if got := request.Header.Get("Content-Type"); got != "application/json" {
+			t.Fatalf("Content-Type = %q, want application/json", got)
+		}
+		var payload map[string]string
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		if payload["cover"] != "/covers/alice.jpg" {
+			t.Fatalf("cover = %q, want /covers/alice.jpg", payload["cover"])
+		}
+		writeJSON(t, writer, map[string]any{"id": "item-1", "coverPath": "/covers/alice.jpg"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	response, err := client.UpdateItemCover(context.Background(), "item-1", "/covers/alice.jpg")
+	if err != nil {
+		t.Fatalf("UpdateItemCover failed: %v", err)
+	}
+	if response == nil {
+		t.Fatal("expected cover update response")
+	}
+}
+
+func TestClientRemoveItemCover(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodDelete {
+			t.Fatalf("method = %s, want DELETE", request.Method)
+		}
+		if request.URL.Path != "/api/items/item-1/cover" {
+			t.Fatalf("path = %s, want /api/items/item-1/cover", request.URL.Path)
+		}
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	if err := client.RemoveItemCover(context.Background(), "item-1"); err != nil {
+		t.Fatalf("RemoveItemCover failed: %v", err)
+	}
+}
+
+func TestClientUpdateItemChapters(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", request.Method)
+		}
+		if request.URL.Path != "/api/items/item-1/chapters" {
+			t.Fatalf("path = %s, want /api/items/item-1/chapters", request.URL.Path)
+		}
+		var payload struct {
+			Chapters []Chapter `json:"chapters"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		if len(payload.Chapters) != 1 {
+			t.Fatalf("chapter count = %d, want 1", len(payload.Chapters))
+		}
+		if payload.Chapters[0].Title != "Intro" || payload.Chapters[0].Start != 0 || payload.Chapters[0].End != 12.5 {
+			t.Fatalf("unexpected chapter: %#v", payload.Chapters[0])
+		}
+		writeJSON(t, writer, map[string]any{"updated": true})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	response, err := client.UpdateItemChapters(context.Background(), "item-1", []Chapter{
+		{Title: "Intro", Start: 0, End: 12.5},
+	})
+	if err != nil {
+		t.Fatalf("UpdateItemChapters failed: %v", err)
+	}
+	if response == nil {
+		t.Fatal("expected chapter update response")
+	}
+}
+
 func TestClientReturnsHTTPError(t *testing.T) {
 	t.Parallel()
 

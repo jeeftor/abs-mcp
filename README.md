@@ -114,9 +114,12 @@ For client-specific snippets, see [Client Configs](#client-configs).
 - `abs_remove_library_items_with_issues`
 
 Mutating tools are blocked by default because `ABS_READ_ONLY` defaults to
-`true`. Planned mutating tools are advertised for discovery but return a
-not-implemented error after read-only and confirmation checks until their ABS
-source and fixture behavior are verified.
+`true`. Scan tools, issue cleanup, `abs_update_item_cover`,
+`abs_remove_item_cover`, and `abs_update_item_chapters` are implemented.
+Remaining planned mutating tools, including broad metadata updates and item
+matching, are advertised for discovery but return a not-implemented error after
+read-only and confirmation checks until their ABS source and fixture behavior
+are verified.
 
 ### Resources
 
@@ -217,19 +220,19 @@ temporary fallback while fixing local trust.
 
 ## Safety
 
-`abs-mcp` defaults to read-only mode. With `ABS_READ_ONLY=true`, all scan and
-cleanup tools are blocked before making Audiobookshelf API calls.
+`abs-mcp` defaults to read-only mode. With `ABS_READ_ONLY=true`, all mutating
+tools are blocked before making Audiobookshelf API calls.
 
 These tools can mutate Audiobookshelf state and require `ABS_READ_ONLY=false`:
 
 - `abs_scan_library`
 - `abs_scan_library_and_wait`
 - `abs_scan_item`
-- `abs_update_item_metadata`
 - `abs_update_item_cover`
 - `abs_remove_item_cover`
-- `abs_match_item`
 - `abs_update_item_chapters`
+- `abs_update_item_metadata` (planned; not implemented)
+- `abs_match_item` (planned; not implemented)
 - `abs_update_item_tracks`
 - `abs_create_collection`
 - `abs_update_collection`

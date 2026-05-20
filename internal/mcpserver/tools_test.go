@@ -611,6 +611,82 @@ func TestScanItemRequiresID(t *testing.T) {
 	}
 }
 
+func TestUpdateItemCover(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+
+	_, output, err := server.UpdateItemCover(context.Background(), nil, UpdateItemCoverInput{
+		ItemID: "item-1",
+		Cover:  "/covers/alice.jpg",
+	})
+	if err != nil {
+		t.Fatalf("UpdateItemCover failed: %v", err)
+	}
+	if !output.Triggered || output.ItemID != "item-1" {
+		t.Fatalf("unexpected cover update output: %#v", output)
+	}
+	if client.updateItemCoverID != "item-1" {
+		t.Fatalf("updateItemCoverID = %q, want item-1", client.updateItemCoverID)
+	}
+	if client.updateItemCoverPath != "/covers/alice.jpg" {
+		t.Fatalf("updateItemCoverPath = %q, want /covers/alice.jpg", client.updateItemCoverPath)
+	}
+}
+
+func TestRemoveItemCover(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+
+	_, output, err := server.RemoveItemCover(context.Background(), nil, ConfirmedItemInput{
+		ItemID:       "item-1",
+		Confirmation: "remove cover from item-1",
+	})
+	if err != nil {
+		t.Fatalf("RemoveItemCover failed: %v", err)
+	}
+	if !output.Triggered || output.ItemID != "item-1" {
+		t.Fatalf("unexpected remove cover output: %#v", output)
+	}
+	if client.removeItemCoverID != "item-1" {
+		t.Fatalf("removeItemCoverID = %q, want item-1", client.removeItemCoverID)
+	}
+}
+
+func TestUpdateItemChapters(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+
+	_, output, err := server.UpdateItemChapters(context.Background(), nil, UpdateItemChaptersInput{
+		ItemID: "item-1",
+		Chapters: []ChapterInput{
+			{Title: "Intro", Start: 0, End: 12.5},
+			{Title: "Chapter 1", Start: 12.5, End: 60},
+		},
+		ExpectedChapterCount: 2,
+	})
+	if err != nil {
+		t.Fatalf("UpdateItemChapters failed: %v", err)
+	}
+	if !output.Triggered || output.ItemID != "item-1" {
+		t.Fatalf("unexpected chapter update output: %#v", output)
+	}
+	if client.updateItemChaptersID != "item-1" {
+		t.Fatalf("updateItemChaptersID = %q, want item-1", client.updateItemChaptersID)
+	}
+	if len(client.updateItemChapters) != 2 {
+		t.Fatalf("chapter count = %d, want 2", len(client.updateItemChapters))
+	}
+	if client.updateItemChapters[0].Title != "Intro" {
+		t.Fatalf("first chapter title = %q, want Intro", client.updateItemChapters[0].Title)
+	}
+}
+
 func TestPlannedMutatingToolsBlockedInReadOnlyMode(t *testing.T) {
 	t.Parallel()
 
@@ -621,7 +697,7 @@ func TestPlannedMutatingToolsBlockedInReadOnlyMode(t *testing.T) {
 			return err
 		},
 		"abs_update_item_cover": func() error {
-			_, _, err := server.UpdateItemCover(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
+			_, _, err := server.UpdateItemCover(context.Background(), nil, UpdateItemCoverInput{ItemID: "item-1", Cover: "/covers/alice.jpg"})
 			return err
 		},
 		"abs_remove_item_cover": func() error {
@@ -633,7 +709,11 @@ func TestPlannedMutatingToolsBlockedInReadOnlyMode(t *testing.T) {
 			return err
 		},
 		"abs_update_item_chapters": func() error {
-			_, _, err := server.UpdateItemChapters(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
+			_, _, err := server.UpdateItemChapters(context.Background(), nil, UpdateItemChaptersInput{
+				ItemID:               "item-1",
+				Chapters:             []ChapterInput{{Title: "Intro", Start: 0, End: 1}},
+				ExpectedChapterCount: 1,
+			})
 			return err
 		},
 		"abs_update_item_tracks": func() error {
@@ -700,6 +780,19 @@ func TestPlannedMutatingToolsValidateInputBeforeImplementation(t *testing.T) {
 	if _, _, err := server.UpdateItemMetadata(context.Background(), nil, ItemPayloadInput{}); err == nil || !strings.Contains(err.Error(), "itemId") {
 		t.Fatalf("expected missing itemId error, got %v", err)
 	}
+	if _, _, err := server.UpdateItemCover(context.Background(), nil, UpdateItemCoverInput{ItemID: "item-1"}); err == nil || !strings.Contains(err.Error(), "cover") {
+		t.Fatalf("expected missing cover error, got %v", err)
+	}
+	if _, _, err := server.UpdateItemChapters(context.Background(), nil, UpdateItemChaptersInput{
+		ItemID:               "item-1",
+		Chapters:             []ChapterInput{{Title: "Intro", Start: 0, End: 1}},
+		ExpectedChapterCount: 2,
+	}); err == nil || !strings.Contains(err.Error(), "expectedChapterCount") {
+		t.Fatalf("expected chapter count guard error, got %v", err)
+	}
+	if _, _, err := server.MatchItem(context.Background(), nil, MatchItemInput{}); err == nil || !strings.Contains(err.Error(), "itemId") {
+		t.Fatalf("expected missing itemId error, got %v", err)
+	}
 	if _, _, err := server.RemoveItemCover(context.Background(), nil, ConfirmedItemInput{ItemID: "item-1", Confirmation: "yes"}); err == nil || !strings.Contains(err.Error(), "remove cover from item-1") {
 		t.Fatalf("expected cover confirmation error, got %v", err)
 	}
@@ -726,8 +819,8 @@ func TestPlannedMutatingToolsAreNotImplementedWithReadOnlyDisabled(t *testing.T)
 			_, _, err := server.UpdateItemMetadata(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
 			return err
 		},
-		"abs_remove_item_cover": func() error {
-			_, _, err := server.RemoveItemCover(context.Background(), nil, ConfirmedItemInput{ItemID: "item-1", Confirmation: "remove cover from item-1"})
+		"abs_match_item": func() error {
+			_, _, err := server.MatchItem(context.Background(), nil, MatchItemInput{ItemID: "item-1"})
 			return err
 		},
 		"abs_create_collection": func() error {
@@ -897,6 +990,11 @@ type fakeABSClient struct {
 	scanLibraryID           string
 	scanForce               bool
 	scanItemID              string
+	updateItemCoverID       string
+	updateItemCoverPath     string
+	removeItemCoverID       string
+	updateItemChaptersID    string
+	updateItemChapters      []abs.Chapter
 	removeIssuesCalled      bool
 	removeIssuesLibraryID   string
 	err                     error
@@ -1115,6 +1213,32 @@ func (f *fakeABSClient) ScanItem(_ context.Context, itemID string) (*abs.ScanIte
 	}
 	f.scanItemID = itemID
 	return &abs.ScanItemResponse{Result: "SUCCESS"}, nil
+}
+
+func (f *fakeABSClient) UpdateItemCover(_ context.Context, itemID string, cover string) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.updateItemCoverID = itemID
+	f.updateItemCoverPath = cover
+	return map[string]any{"itemId": itemID, "cover": cover}, nil
+}
+
+func (f *fakeABSClient) RemoveItemCover(_ context.Context, itemID string) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.removeItemCoverID = itemID
+	return nil
+}
+
+func (f *fakeABSClient) UpdateItemChapters(_ context.Context, itemID string, chapters []abs.Chapter) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.updateItemChaptersID = itemID
+	f.updateItemChapters = chapters
+	return map[string]any{"itemId": itemID, "chapterCount": len(chapters)}, nil
 }
 
 func (f *fakeABSClient) RemoveLibraryItemsWithIssues(_ context.Context, libraryID string) error {

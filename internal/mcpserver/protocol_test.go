@@ -489,6 +489,107 @@ func TestMCPProtocolScanItem(t *testing.T) {
 	}
 }
 
+func TestMCPProtocolItemMutatingTools(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	fakeClient := newFakeABSClient()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	serverErr := make(chan error, 1)
+	go func() {
+		server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, fakeClient)
+		serverErr <- server.MCPServer().Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "abs-mcp-item-mutation-test-client",
+		Version: "0.1.0",
+	}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("connect MCP client: %v", err)
+	}
+	defer session.Close()
+
+	coverResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_update_item_cover",
+		Arguments: map[string]any{
+			"itemId": "item-1",
+			"cover":  "/covers/alice.jpg",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_update_item_cover: %v", err)
+	}
+	if coverResult.IsError {
+		t.Fatalf("abs_update_item_cover returned tool error: %#v", coverResult.Content)
+	}
+	var coverOutput ItemMutationOutput
+	marshalStructuredOutput(t, coverResult.StructuredContent, &coverOutput)
+	if !coverOutput.Triggered || coverOutput.ItemID != "item-1" {
+		t.Fatalf("unexpected cover update output: %#v", coverOutput)
+	}
+
+	chaptersResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_update_item_chapters",
+		Arguments: map[string]any{
+			"itemId": "item-1",
+			"chapters": []any{
+				map[string]any{"title": "Intro", "start": 0, "end": 12.5},
+			},
+			"expectedChapterCount": 1,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_update_item_chapters: %v", err)
+	}
+	if chaptersResult.IsError {
+		t.Fatalf("abs_update_item_chapters returned tool error: %#v", chaptersResult.Content)
+	}
+	var chaptersOutput ItemMutationOutput
+	marshalStructuredOutput(t, chaptersResult.StructuredContent, &chaptersOutput)
+	if !chaptersOutput.Triggered || chaptersOutput.ItemID != "item-1" {
+		t.Fatalf("unexpected chapter update output: %#v", chaptersOutput)
+	}
+
+	removeResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_remove_item_cover",
+		Arguments: map[string]any{
+			"itemId":       "item-1",
+			"confirmation": "remove cover from item-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_remove_item_cover: %v", err)
+	}
+	if removeResult.IsError {
+		t.Fatalf("abs_remove_item_cover returned tool error: %#v", removeResult.Content)
+	}
+	var removeOutput RemoveItemCoverOutput
+	marshalStructuredOutput(t, removeResult.StructuredContent, &removeOutput)
+	if !removeOutput.Triggered || removeOutput.ItemID != "item-1" {
+		t.Fatalf("unexpected remove cover output: %#v", removeOutput)
+	}
+
+	if fakeClient.updateItemCoverID != "item-1" || fakeClient.updateItemChaptersID != "item-1" || fakeClient.removeItemCoverID != "item-1" {
+		t.Fatalf("unexpected fake client calls: cover=%q chapters=%q remove=%q", fakeClient.updateItemCoverID, fakeClient.updateItemChaptersID, fakeClient.removeItemCoverID)
+	}
+
+	if err := session.Close(); err != nil {
+		t.Fatalf("close MCP session: %v", err)
+	}
+	select {
+	case err := <-serverErr:
+		if err != nil {
+			t.Fatalf("server Run returned error: %v", err)
+		}
+	case <-ctx.Done():
+		t.Fatalf("server did not stop after client close: %v", ctx.Err())
+	}
+}
+
 func toolNames(result *mcp.ListToolsResult) map[string]bool {
 	names := make(map[string]bool, len(result.Tools))
 	for _, tool := range result.Tools {
