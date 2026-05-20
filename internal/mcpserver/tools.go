@@ -32,6 +32,9 @@ type ABSClient interface {
 	ScanLibrary(context.Context, string, bool) error
 	RemoveLibraryItemsWithIssues(context.Context, string) error
 	ScanItem(context.Context, string) (*abs.ScanItemResponse, error)
+	UpdateItemCover(context.Context, string, string) (abs.JSONValue, error)
+	RemoveItemCover(context.Context, string) error
+	UpdateItemChapters(context.Context, string, []abs.Chapter) (abs.JSONValue, error)
 }
 
 // Server owns MCP tool handlers and their dependencies.
@@ -127,27 +130,27 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_update_item_metadata",
 		Title:       "Update Audiobookshelf item metadata",
-		Description: "Planned tool for updating selected metadata on one item. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Planned tool for updating selected metadata on one item. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until safe typed fields are source-verified.",
 	}, s.UpdateItemMetadata)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_update_item_cover",
 		Title:       "Update Audiobookshelf item cover",
-		Description: "Planned tool for updating one item cover. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Update one Audiobookshelf item cover from an ABS-visible path using PATCH. Blocked when ABS_READ_ONLY is true.",
 	}, s.UpdateItemCover)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_remove_item_cover",
 		Title:       "Remove Audiobookshelf item cover",
-		Description: "Planned destructive tool for removing one item cover. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+		Description: "Remove one Audiobookshelf item cover. Requires exact confirmation and is blocked when ABS_READ_ONLY is true.",
 	}, s.RemoveItemCover)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_match_item",
 		Title:       "Match Audiobookshelf item metadata",
-		Description: "Planned tool for running Audiobookshelf item matching. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Planned tool for running Audiobookshelf item matching. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until a restricted source-verified input is available.",
 	}, s.MatchItem)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_update_item_chapters",
 		Title:       "Update Audiobookshelf item chapters",
-		Description: "Planned tool for replacing item chapters. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Replace one Audiobookshelf item chapter list with typed chapters after an expected-count guard. Blocked when ABS_READ_ONLY is true.",
 	}, s.UpdateItemChapters)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_update_item_tracks",
@@ -439,19 +442,39 @@ type ScanItemOutput struct {
 	Result    string `json:"result,omitempty" jsonschema:"Audiobookshelf scan result string, when returned by ABS."`
 }
 
-// ItemPayloadInput identifies one planned item mutation with a caller-provided payload.
+// ItemPayloadInput identifies one item mutation with a caller-provided payload.
 type ItemPayloadInput struct {
 	ItemID  string        `json:"itemId" jsonschema:"Audiobookshelf library item ID to mutate."`
 	Payload abs.JSONValue `json:"payload,omitempty" jsonschema:"Planned mutation payload. Exact shape is not committed until source and fixture behavior are verified."`
 }
 
-// ConfirmedItemInput identifies one planned destructive item mutation.
+// ConfirmedItemInput identifies one destructive item mutation.
 type ConfirmedItemInput struct {
 	ItemID       string `json:"itemId" jsonschema:"Audiobookshelf library item ID to mutate."`
 	Confirmation string `json:"confirmation" jsonschema:"Exact confirmation text required by the tool."`
 }
 
-// MatchItemInput identifies one planned item match request.
+// UpdateItemCoverInput identifies one item cover update request.
+type UpdateItemCoverInput struct {
+	ItemID string `json:"itemId" jsonschema:"Audiobookshelf library item ID to mutate."`
+	Cover  string `json:"cover" jsonschema:"ABS-visible cover path to set on the item."`
+}
+
+// ChapterInput is one typed item chapter.
+type ChapterInput struct {
+	Title string  `json:"title" jsonschema:"Chapter title."`
+	Start float64 `json:"start" jsonschema:"Chapter start time in seconds."`
+	End   float64 `json:"end" jsonschema:"Chapter end time in seconds."`
+}
+
+// UpdateItemChaptersInput identifies one guarded chapter replacement request.
+type UpdateItemChaptersInput struct {
+	ItemID               string         `json:"itemId" jsonschema:"Audiobookshelf library item ID to mutate."`
+	Chapters             []ChapterInput `json:"chapters" jsonschema:"Complete replacement chapter list."`
+	ExpectedChapterCount int            `json:"expectedChapterCount" jsonschema:"Expected chapter count. Must exactly equal len(chapters)."`
+}
+
+// MatchItemInput identifies one item match request.
 type MatchItemInput struct {
 	ItemID       string        `json:"itemId" jsonschema:"Audiobookshelf library item ID to match."`
 	Provider     string        `json:"provider,omitempty" jsonschema:"Optional metadata provider to use when matching."`
@@ -506,6 +529,19 @@ type PlannedMutationOutput struct {
 	Tool        string `json:"tool" jsonschema:"MCP tool name."`
 	Route       string `json:"route" jsonschema:"Audiobookshelf API route planned for this tool."`
 	Implemented bool   `json:"implemented" jsonschema:"Whether this planned mutation is implemented."`
+}
+
+// ItemMutationOutput is returned by typed item mutation tools.
+type ItemMutationOutput struct {
+	Triggered bool          `json:"triggered" jsonschema:"Whether an Audiobookshelf mutation request was sent."`
+	ItemID    string        `json:"itemId" jsonschema:"Audiobookshelf library item ID requested for mutation."`
+	Data      abs.JSONValue `json:"data,omitempty" jsonschema:"Raw Audiobookshelf response, when returned by ABS."`
+}
+
+// RemoveItemCoverOutput is returned by abs_remove_item_cover.
+type RemoveItemCoverOutput struct {
+	Triggered bool   `json:"triggered" jsonschema:"Whether the cover removal request was sent."`
+	ItemID    string `json:"itemId" jsonschema:"Audiobookshelf library item ID requested for cover removal."`
 }
 
 // LibrarySummary is a compact library shape suitable for MCP output.
@@ -993,38 +1029,48 @@ func (s *Server) UpdateItemMetadata(
 	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_item_metadata", "PATCH /api/items/:id/media")
 }
 
-// UpdateItemCover is a planned cover mutation tool gated by read-only mode.
+// UpdateItemCover updates an item cover from an ABS-visible path.
 func (s *Server) UpdateItemCover(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
-	input ItemPayloadInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	input UpdateItemCoverInput,
+) (*mcp.CallToolResult, ItemMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_update_item_cover"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, ItemMutationOutput{}, err
 	}
 	if input.ItemID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+		return nil, ItemMutationOutput{}, fmt.Errorf("itemId is required")
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_item_cover", "PATCH|POST /api/items/:id/cover")
+	if strings.TrimSpace(input.Cover) == "" {
+		return nil, ItemMutationOutput{}, fmt.Errorf("cover is required")
+	}
+	data, err := s.client.UpdateItemCover(ctx, input.ItemID, input.Cover)
+	if err != nil {
+		return nil, ItemMutationOutput{}, fmt.Errorf("update ABS item %q cover: %w", input.ItemID, err)
+	}
+	return nil, ItemMutationOutput{Triggered: true, ItemID: input.ItemID, Data: data}, nil
 }
 
-// RemoveItemCover is a planned destructive cover mutation tool gated by read-only mode.
+// RemoveItemCover removes an item cover after exact confirmation.
 func (s *Server) RemoveItemCover(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input ConfirmedItemInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, RemoveItemCoverOutput, error) {
 	if err := s.requireMutatingTool("abs_remove_item_cover"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, RemoveItemCoverOutput{}, err
 	}
 	if input.ItemID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+		return nil, RemoveItemCoverOutput{}, fmt.Errorf("itemId is required")
 	}
 	expectedConfirmation := fmt.Sprintf("remove cover from %s", input.ItemID)
 	if input.Confirmation != expectedConfirmation {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+		return nil, RemoveItemCoverOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_remove_item_cover", "DELETE /api/items/:id/cover")
+	if err := s.client.RemoveItemCover(ctx, input.ItemID); err != nil {
+		return nil, RemoveItemCoverOutput{}, fmt.Errorf("remove ABS item %q cover: %w", input.ItemID, err)
+	}
+	return nil, RemoveItemCoverOutput{Triggered: true, ItemID: input.ItemID}, nil
 }
 
 // MatchItem is a planned item matching tool gated by read-only mode.
@@ -1042,19 +1088,46 @@ func (s *Server) MatchItem(
 	return nil, PlannedMutationOutput{}, plannedToolError("abs_match_item", "POST /api/items/:id/match")
 }
 
-// UpdateItemChapters is a planned chapter mutation tool gated by read-only mode.
+// UpdateItemChapters replaces an item chapter list after an expected-count guard.
 func (s *Server) UpdateItemChapters(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
-	input ItemPayloadInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	input UpdateItemChaptersInput,
+) (*mcp.CallToolResult, ItemMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_update_item_chapters"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, ItemMutationOutput{}, err
 	}
 	if input.ItemID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+		return nil, ItemMutationOutput{}, fmt.Errorf("itemId is required")
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_item_chapters", "POST /api/items/:id/chapters")
+	if len(input.Chapters) == 0 {
+		return nil, ItemMutationOutput{}, fmt.Errorf("chapters must contain at least one chapter")
+	}
+	if input.ExpectedChapterCount != len(input.Chapters) {
+		return nil, ItemMutationOutput{}, fmt.Errorf("expectedChapterCount %d does not match chapter count %d", input.ExpectedChapterCount, len(input.Chapters))
+	}
+	chapters := make([]abs.Chapter, 0, len(input.Chapters))
+	for index, chapter := range input.Chapters {
+		if strings.TrimSpace(chapter.Title) == "" {
+			return nil, ItemMutationOutput{}, fmt.Errorf("chapters[%d].title is required", index)
+		}
+		if chapter.Start < 0 {
+			return nil, ItemMutationOutput{}, fmt.Errorf("chapters[%d].start must be greater than or equal to 0", index)
+		}
+		if chapter.End < chapter.Start {
+			return nil, ItemMutationOutput{}, fmt.Errorf("chapters[%d].end must be greater than or equal to start", index)
+		}
+		chapters = append(chapters, abs.Chapter{
+			Title: strings.TrimSpace(chapter.Title),
+			Start: chapter.Start,
+			End:   chapter.End,
+		})
+	}
+	data, err := s.client.UpdateItemChapters(ctx, input.ItemID, chapters)
+	if err != nil {
+		return nil, ItemMutationOutput{}, fmt.Errorf("update ABS item %q chapters: %w", input.ItemID, err)
+	}
+	return nil, ItemMutationOutput{Triggered: true, ItemID: input.ItemID, Data: data}, nil
 }
 
 // UpdateItemTracks is a planned track mutation tool gated by read-only mode.

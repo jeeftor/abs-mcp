@@ -1,8 +1,10 @@
 package abs
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +14,8 @@ import (
 )
 
 const defaultTimeout = 30 * time.Second
+
+const maxJSONPayloadBytes = 64 * 1024
 
 // Client is an Audiobookshelf REST API client.
 type Client struct {
@@ -249,6 +253,41 @@ func (c *Client) ScanItem(ctx context.Context, itemID string) (*ScanItemResponse
 	return &response, nil
 }
 
+// Chapter is one audiobook chapter payload accepted by ABS.
+type Chapter struct {
+	Title string  `json:"title"`
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+}
+
+// UpdateItemCover updates one ABS library item's cover from an ABS-visible path.
+func (c *Client) UpdateItemCover(ctx context.Context, itemID string, cover string) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/items/%s/cover", url.PathEscape(itemID))
+	payload := map[string]string{"cover": cover}
+	if err := c.doJSON(ctx, http.MethodPatch, path, nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// RemoveItemCover removes one ABS library item's cover.
+func (c *Client) RemoveItemCover(ctx context.Context, itemID string) error {
+	path := fmt.Sprintf("/api/items/%s/cover", url.PathEscape(itemID))
+	return c.do(ctx, http.MethodDelete, path, nil, nil)
+}
+
+// UpdateItemChapters replaces one ABS library item's chapters.
+func (c *Client) UpdateItemChapters(ctx context.Context, itemID string, chapters []Chapter) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/items/%s/chapters", url.PathEscape(itemID))
+	payload := map[string][]Chapter{"chapters": chapters}
+	if err := c.doJSON(ctx, http.MethodPost, path, nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 func (c *Client) getJSON(
 	ctx context.Context,
 	path string,
@@ -278,6 +317,51 @@ func (c *Client) getJSON(
 	}
 
 	if err := json.NewDecoder(response.Body).Decode(output); err != nil {
+		return fmt.Errorf("decode ABS %s response: %w", request.URL.Path, err)
+	}
+	return nil
+}
+
+func (c *Client) doJSON(ctx context.Context, method string, path string, query url.Values, payload JSONValue, output any) error {
+	requestURL := c.baseURL.ResolveReference(&url.URL{Path: path})
+	if len(query) > 0 {
+		requestURL.RawQuery = query.Encode()
+	}
+
+	if payload == nil {
+		payload = map[string]any{}
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encode ABS %s request: %w", path, err)
+	}
+	if len(body) > maxJSONPayloadBytes {
+		return fmt.Errorf("ABS %s request payload is %d bytes; maximum is %d bytes", path, len(body), maxJSONPayloadBytes)
+	}
+
+	request, err := http.NewRequestWithContext(ctx, method, requestURL.String(), bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create ABS request: %w", err)
+	}
+	request.Header.Set("Content-Type", "application/json")
+	c.applyHeaders(request)
+
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return fmt.Errorf("call ABS %s: %w", request.URL.Path, err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
+		return fmt.Errorf("ABS %s returned HTTP %d: %s", request.URL.Path, response.StatusCode, c.redact(strings.TrimSpace(string(body))))
+	}
+
+	if output == nil {
+		io.Copy(io.Discard, response.Body)
+		return nil
+	}
+	if err := json.NewDecoder(response.Body).Decode(output); err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("decode ABS %s response: %w", request.URL.Path, err)
 	}
 	return nil
