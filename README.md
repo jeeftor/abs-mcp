@@ -74,6 +74,7 @@ For client-specific snippets, see [Client Configs](#client-configs).
 - `abs_get_library_stats`
 - `abs_get_filter_data`
 - `abs_get_item_metadata_object`
+- `abs_find_misorganized_items`
 - `abs_scan_library`
 - `abs_scan_library_and_wait`
 - `abs_scan_item`

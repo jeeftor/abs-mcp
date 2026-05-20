@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -103,6 +104,11 @@ func (s *Server) MCPServer() *mcp.Server {
 		Title:       "Get Audiobookshelf item metadata object",
 		Description: "Get the raw ABS metadata object for one audiobook item. Requires sufficient ABS permissions.",
 	}, s.GetItemMetadataObject)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_find_misorganized_items",
+		Title:       "Find misorganized Audiobookshelf items",
+		Description: "Audit item paths against author/title or author/series/title layout conventions without moving files.",
+	}, s.FindMisorganizedItems)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_scan_library",
 		Title:       "Scan Audiobookshelf library",
@@ -243,6 +249,48 @@ type LibraryRawOutput struct {
 type MetadataObjectOutput struct {
 	ItemID string        `json:"itemId"`
 	Data   abs.JSONValue `json:"data" jsonschema:"Raw Audiobookshelf metadata object response."`
+}
+
+// FindMisorganizedItemsInput selects one read-only library layout audit.
+type FindMisorganizedItemsInput struct {
+	LibraryID        string `json:"libraryId" jsonschema:"Audiobookshelf library ID to audit."`
+	Convention       string `json:"convention,omitempty" jsonschema:"Layout convention: auto, author-title, or author-series-title. Defaults to auto."`
+	Limit            int    `json:"limit,omitempty" jsonschema:"Maximum findings to return. Defaults to 50 and is capped at 200."`
+	IncludeOrganized bool   `json:"includeOrganized,omitempty" jsonschema:"Whether to include organized items in the returned item list."`
+}
+
+// FindMisorganizedItemsOutput is returned by abs_find_misorganized_items.
+type FindMisorganizedItemsOutput struct {
+	LibraryID            string            `json:"libraryId" jsonschema:"Audiobookshelf library ID audited."`
+	Convention           string            `json:"convention" jsonschema:"Layout convention used for the audit."`
+	CheckedCount         int               `json:"checkedCount" jsonschema:"Number of items checked."`
+	OrganizedCount       int               `json:"organizedCount" jsonschema:"Number of items that matched the expected layout."`
+	MisorganizedCount    int               `json:"misorganizedCount" jsonschema:"Number of items that did not match the expected layout."`
+	UnclassifiableCount  int               `json:"unclassifiableCount" jsonschema:"Number of items that could not be classified due to missing metadata or path data."`
+	ReturnedCount        int               `json:"returnedCount" jsonschema:"Number of item findings returned."`
+	Limit                int               `json:"limit" jsonschema:"Maximum findings requested after normalization."`
+	Items                []LayoutAuditItem `json:"items" jsonschema:"Layout audit findings."`
+	Truncated            bool              `json:"truncated" jsonschema:"Whether additional findings were omitted by the limit."`
+	SummaryByReason      map[string]int    `json:"summaryByReason" jsonschema:"Finding counts grouped by reason."`
+	SupportedConventions []string          `json:"supportedConventions" jsonschema:"Layout conventions supported by this tool."`
+	LibraryFolders       []FolderSummary   `json:"libraryFolders,omitempty" jsonschema:"Library root folders used to derive relative paths."`
+}
+
+// LayoutAuditItem describes one item path classification.
+type LayoutAuditItem struct {
+	ItemID          string   `json:"itemId" jsonschema:"Audiobookshelf library item ID."`
+	Title           string   `json:"title,omitempty" jsonschema:"Metadata title used for expected path calculation."`
+	Author          string   `json:"author,omitempty" jsonschema:"Metadata author used for expected path calculation."`
+	Series          string   `json:"series,omitempty" jsonschema:"Metadata series used for expected path calculation."`
+	CurrentRelPath  string   `json:"currentRelPath,omitempty" jsonschema:"Current item path relative to the library folder when known."`
+	ExpectedRelPath string   `json:"expectedRelPath,omitempty" jsonschema:"Expected item directory for the selected layout convention."`
+	Convention      string   `json:"convention" jsonschema:"Layout convention used for this item."`
+	Organized       bool     `json:"organized" jsonschema:"Whether the current path matches the expected path."`
+	Classifiable    bool     `json:"classifiable" jsonschema:"Whether enough metadata and path data was available to classify the item."`
+	Confidence      string   `json:"confidence" jsonschema:"Confidence level for the classification: high, medium, or low."`
+	Reasons         []string `json:"reasons,omitempty" jsonschema:"Machine-readable reasons for misorganization or uncertainty."`
+	IsMissing       bool     `json:"isMissing" jsonschema:"Whether ABS marks the item as missing."`
+	IsInvalid       bool     `json:"isInvalid" jsonschema:"Whether ABS marks the item as invalid."`
 }
 
 // ScanLibraryInput identifies one ABS library scan request.
@@ -551,6 +599,66 @@ func (s *Server) GetItemMetadataObject(
 	return nil, MetadataObjectOutput{ItemID: input.ItemID, Data: data}, nil
 }
 
+// FindMisorganizedItems audits item paths against expected library layout conventions.
+func (s *Server) FindMisorganizedItems(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input FindMisorganizedItemsInput,
+) (*mcp.CallToolResult, FindMisorganizedItemsOutput, error) {
+	if input.LibraryID == "" {
+		return nil, FindMisorganizedItemsOutput{}, fmt.Errorf("libraryId is required")
+	}
+	convention, err := normalizeLayoutConvention(input.Convention)
+	if err != nil {
+		return nil, FindMisorganizedItemsOutput{}, err
+	}
+	limit, err := normalizeLayoutLimit(input.Limit)
+	if err != nil {
+		return nil, FindMisorganizedItemsOutput{}, err
+	}
+
+	library, err := s.client.GetLibrary(ctx, input.LibraryID)
+	if err != nil {
+		return nil, FindMisorganizedItemsOutput{}, fmt.Errorf("get ABS library %q: %w", input.LibraryID, err)
+	}
+	items, err := s.client.GetAllLibraryItems(ctx, input.LibraryID)
+	if err != nil {
+		return nil, FindMisorganizedItemsOutput{}, fmt.Errorf("list ABS library %q items for layout audit: %w", input.LibraryID, err)
+	}
+
+	output := FindMisorganizedItemsOutput{
+		LibraryID:            input.LibraryID,
+		Convention:           convention,
+		CheckedCount:         len(items),
+		Limit:                limit,
+		SummaryByReason:      map[string]int{},
+		SupportedConventions: supportedLayoutConventions(),
+		LibraryFolders:       summarizeLibrary(*library).Folders,
+	}
+	for _, item := range items {
+		auditItem := auditItemLayout(item, *library, convention)
+		if auditItem.Organized {
+			output.OrganizedCount++
+		} else if auditItem.Classifiable {
+			output.MisorganizedCount++
+		} else {
+			output.UnclassifiableCount++
+		}
+		for _, reason := range auditItem.Reasons {
+			output.SummaryByReason[reason]++
+		}
+		if input.IncludeOrganized || !auditItem.Organized {
+			if len(output.Items) < limit {
+				output.Items = append(output.Items, auditItem)
+			} else {
+				output.Truncated = true
+			}
+		}
+	}
+	output.ReturnedCount = len(output.Items)
+	return nil, output, nil
+}
+
 // ScanLibrary triggers one ABS library scan when mutating tools are enabled.
 func (s *Server) ScanLibrary(
 	ctx context.Context,
@@ -747,6 +855,36 @@ func normalizeSearchLimit(limit int) (int, error) {
 	return limit, nil
 }
 
+func normalizeLayoutLimit(limit int) (int, error) {
+	if limit == 0 {
+		return 50, nil
+	}
+	if limit < 0 {
+		return 0, fmt.Errorf("limit must be greater than 0")
+	}
+	if limit > 200 {
+		return 200, nil
+	}
+	return limit, nil
+}
+
+func supportedLayoutConventions() []string {
+	return []string{"auto", "author-title", "author-series-title"}
+}
+
+func normalizeLayoutConvention(convention string) (string, error) {
+	convention = strings.TrimSpace(strings.ToLower(convention))
+	if convention == "" {
+		return "auto", nil
+	}
+	for _, supported := range supportedLayoutConventions() {
+		if convention == supported {
+			return convention, nil
+		}
+	}
+	return "", fmt.Errorf("convention must be one of: %s", strings.Join(supportedLayoutConventions(), ", "))
+}
+
 func pageFromOffset(offset int, limit int) (int, error) {
 	if offset == 0 {
 		return 0, nil
@@ -758,6 +896,168 @@ func pageFromOffset(offset int, limit int) (int, error) {
 		return 0, fmt.Errorf("offset must be a multiple of limit because ABS uses page-based pagination")
 	}
 	return offset / limit, nil
+}
+
+func auditItemLayout(item abs.LibraryItem, library abs.Library, convention string) LayoutAuditItem {
+	author := itemAuthor(item)
+	title := item.Media.Metadata.Title
+	series := itemSeries(item)
+	currentRelPath := itemRelPath(item, library)
+	itemConvention := convention
+	if itemConvention == "auto" {
+		itemConvention = "author-title"
+		if series != "" {
+			itemConvention = "author-series-title"
+		}
+	}
+
+	result := LayoutAuditItem{
+		ItemID:         item.ID,
+		Title:          title,
+		Author:         author,
+		Series:         series,
+		CurrentRelPath: currentRelPath,
+		Convention:     itemConvention,
+		Confidence:     "high",
+		IsMissing:      item.IsMissing,
+		IsInvalid:      item.IsInvalid,
+	}
+
+	var expectedParts []string
+	if author == "" {
+		result.Reasons = append(result.Reasons, "metadata_missing_author")
+	}
+	if title == "" {
+		result.Reasons = append(result.Reasons, "metadata_missing_title")
+	}
+	if currentRelPath == "" {
+		result.Reasons = append(result.Reasons, "path_missing")
+	}
+	if itemConvention == "author-series-title" && series == "" {
+		result.Reasons = append(result.Reasons, "metadata_missing_series")
+	}
+
+	if author != "" {
+		expectedParts = append(expectedParts, cleanLayoutSegment(author))
+	}
+	if itemConvention == "author-series-title" && series != "" {
+		expectedParts = append(expectedParts, cleanLayoutSegment(series))
+	}
+	if title != "" {
+		expectedParts = append(expectedParts, cleanLayoutSegment(title))
+	}
+	result.ExpectedRelPath = strings.Join(expectedParts, "/")
+
+	if len(result.Reasons) > 0 {
+		result.Classifiable = false
+		result.Confidence = "low"
+		return result
+	}
+
+	currentParts := splitLayoutPath(currentRelPath)
+	expectedParts = splitLayoutPath(result.ExpectedRelPath)
+	result.Classifiable = true
+	result.Reasons = layoutMismatchReasons(currentParts, expectedParts, itemConvention)
+	result.Organized = len(result.Reasons) == 0
+	if !result.Organized && len(currentParts) >= len(expectedParts) {
+		result.Confidence = "medium"
+	}
+	return result
+}
+
+func itemAuthor(item abs.LibraryItem) string {
+	return firstNonEmpty(item.Media.Metadata.AuthorName, item.AuthorNamesFirstLast)
+}
+
+func itemSeries(item abs.LibraryItem) string {
+	if item.Media.Metadata.SeriesName != "" {
+		return item.Media.Metadata.SeriesName
+	}
+	if len(item.Media.Metadata.Series) > 0 {
+		return item.Media.Metadata.Series[0].Name
+	}
+	return ""
+}
+
+func itemRelPath(item abs.LibraryItem, library abs.Library) string {
+	if item.RelPath != "" {
+		return trimLayoutPath(item.RelPath)
+	}
+	itemPath := trimLayoutPath(item.Path)
+	for _, folder := range library.Folders {
+		for _, root := range []string{folder.FullPath, folder.Path} {
+			root = trimLayoutPath(root)
+			if root == "" {
+				continue
+			}
+			if itemPath == root {
+				return ""
+			}
+			if strings.HasPrefix(itemPath, root+"/") {
+				return strings.TrimPrefix(itemPath, root+"/")
+			}
+		}
+	}
+	return itemPath
+}
+
+func layoutMismatchReasons(currentParts []string, expectedParts []string, convention string) []string {
+	reasons := make([]string, 0)
+	if len(currentParts) < len(expectedParts) {
+		reasons = append(reasons, "path_too_shallow")
+	}
+	if len(currentParts) > len(expectedParts) {
+		reasons = append(reasons, "path_has_extra_directories")
+	}
+	if !sameLayoutPart(currentParts, expectedParts, 0) {
+		reasons = append(reasons, "author_directory_mismatch")
+	}
+	titleIndex := len(expectedParts) - 1
+	if !sameLayoutPart(currentParts, expectedParts, titleIndex) {
+		reasons = append(reasons, "title_directory_mismatch")
+	}
+	if convention == "author-series-title" && !sameLayoutPart(currentParts, expectedParts, 1) {
+		reasons = append(reasons, "series_directory_mismatch")
+	}
+	return reasons
+}
+
+func sameLayoutPart(currentParts []string, expectedParts []string, index int) bool {
+	if index < 0 || index >= len(currentParts) || index >= len(expectedParts) {
+		return false
+	}
+	return normalizeLayoutPart(currentParts[index]) == normalizeLayoutPart(expectedParts[index])
+}
+
+func splitLayoutPath(value string) []string {
+	value = trimLayoutPath(value)
+	if value == "" {
+		return nil
+	}
+	return strings.Split(value, "/")
+}
+
+func trimLayoutPath(value string) string {
+	value = strings.ReplaceAll(value, "\\", "/")
+	value = path.Clean("/" + value)
+	return strings.Trim(value, "/")
+}
+
+func cleanLayoutSegment(value string) string {
+	value = strings.TrimSpace(strings.ReplaceAll(value, "/", "-"))
+	value = strings.ReplaceAll(value, "\\", "-")
+	value = strings.Join(strings.Fields(value), " ")
+	if value == "" {
+		return "Unknown"
+	}
+	return value
+}
+
+func normalizeLayoutPart(value string) string {
+	value = strings.ToLower(cleanLayoutSegment(value))
+	replacer := strings.NewReplacer(":", "", ";", "", ",", "", ".", "", "'", "", "\"", "", "!", "", "?", "", "&", "and")
+	value = replacer.Replace(value)
+	return strings.Join(strings.Fields(value), " ")
 }
 
 func sanitizeInclude(values []string) []string {

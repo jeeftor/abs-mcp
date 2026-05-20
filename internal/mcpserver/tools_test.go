@@ -296,6 +296,126 @@ func TestGetItemMetadataObject(t *testing.T) {
 	}
 }
 
+func TestFindMisorganizedItems(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	client.items["lib-audio"] = []abs.LibraryItem{
+		{
+			ID:        "organized",
+			LibraryID: "lib-audio",
+			Path:      "/audiobooks/Lewis Carroll/Alice",
+			RelPath:   "Lewis Carroll/Alice",
+			MediaType: "book",
+			Media:     abs.Media{Metadata: abs.Metadata{Title: "Alice", AuthorName: "Lewis Carroll"}},
+		},
+		{
+			ID:        "series-ok",
+			LibraryID: "lib-audio",
+			Path:      "/audiobooks/Lewis Carroll/Alice Books/Alice",
+			RelPath:   "Lewis Carroll/Alice Books/Alice",
+			MediaType: "book",
+			Media: abs.Media{Metadata: abs.Metadata{
+				Title:      "Alice",
+				AuthorName: "Lewis Carroll",
+				SeriesName: "Alice Books",
+			}},
+		},
+		{
+			ID:        "flat",
+			LibraryID: "lib-audio",
+			Path:      "/audiobooks/Alice",
+			RelPath:   "Alice",
+			MediaType: "book",
+			Media:     abs.Media{Metadata: abs.Metadata{Title: "Alice", AuthorName: "Lewis Carroll"}},
+		},
+		{
+			ID:        "wrong-series",
+			LibraryID: "lib-audio",
+			Path:      "/audiobooks/Lewis Carroll/Alice",
+			RelPath:   "Lewis Carroll/Alice",
+			MediaType: "book",
+			Media: abs.Media{Metadata: abs.Metadata{
+				Title:      "Alice",
+				AuthorName: "Lewis Carroll",
+				SeriesName: "Alice Books",
+			}},
+		},
+		{
+			ID:        "missing-author",
+			LibraryID: "lib-audio",
+			Path:      "/audiobooks/Unknown/Alice",
+			RelPath:   "Unknown/Alice",
+			MediaType: "book",
+			Media:     abs.Media{Metadata: abs.Metadata{Title: "Alice"}},
+		},
+	}
+
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.FindMisorganizedItems(context.Background(), nil, FindMisorganizedItemsInput{
+		LibraryID: "lib-audio",
+	})
+	if err != nil {
+		t.Fatalf("FindMisorganizedItems failed: %v", err)
+	}
+	if output.CheckedCount != 5 || output.OrganizedCount != 2 || output.MisorganizedCount != 2 || output.UnclassifiableCount != 1 {
+		t.Fatalf("unexpected layout counts: %#v", output)
+	}
+	if output.ReturnedCount != 3 {
+		t.Fatalf("returned count = %d, want 3", output.ReturnedCount)
+	}
+	findings := layoutFindingsByID(output.Items)
+	if !contains(findings["flat"].Reasons, "path_too_shallow") || !contains(findings["flat"].Reasons, "author_directory_mismatch") {
+		t.Fatalf("flat reasons = %#v", findings["flat"].Reasons)
+	}
+	if !contains(findings["wrong-series"].Reasons, "path_too_shallow") || !contains(findings["wrong-series"].Reasons, "series_directory_mismatch") {
+		t.Fatalf("wrong-series reasons = %#v", findings["wrong-series"].Reasons)
+	}
+	if !contains(findings["missing-author"].Reasons, "metadata_missing_author") {
+		t.Fatalf("missing-author reasons = %#v", findings["missing-author"].Reasons)
+	}
+}
+
+func TestFindMisorganizedItemsIncludeOrganizedAndLimit(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.FindMisorganizedItems(context.Background(), nil, FindMisorganizedItemsInput{
+		LibraryID:        "lib-audio",
+		Convention:       "author-title",
+		Limit:            2,
+		IncludeOrganized: true,
+	})
+	if err != nil {
+		t.Fatalf("FindMisorganizedItems failed: %v", err)
+	}
+	if output.ReturnedCount != 2 || !output.Truncated {
+		t.Fatalf("expected two truncated findings, got %#v", output)
+	}
+	if output.Convention != "author-title" {
+		t.Fatalf("convention = %q, want author-title", output.Convention)
+	}
+}
+
+func TestFindMisorganizedItemsRejectsBadInput(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	tests := map[string]FindMisorganizedItemsInput{
+		"missing library": {Convention: "auto"},
+		"bad convention":  {LibraryID: "lib-audio", Convention: "flat"},
+		"bad limit":       {LibraryID: "lib-audio", Limit: -1},
+	}
+	for name, input := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if _, _, err := server.FindMisorganizedItems(context.Background(), nil, input); err == nil {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
+
 func TestRawToolsRequireIDs(t *testing.T) {
 	t.Parallel()
 
@@ -611,6 +731,23 @@ func TestToolHandlerPropagatesClientError(t *testing.T) {
 
 func newTestServer() *Server {
 	return New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, newFakeABSClient())
+}
+
+func layoutFindingsByID(items []LayoutAuditItem) map[string]LayoutAuditItem {
+	findings := make(map[string]LayoutAuditItem, len(items))
+	for _, item := range items {
+		findings[item.ItemID] = item
+	}
+	return findings
+}
+
+func contains(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 type fakeABSClient struct {

@@ -60,6 +60,9 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	if !toolNames(tools)["abs_search_library"] {
 		t.Fatalf("expected abs_search_library in tools: %#v", tools.Tools)
 	}
+	if !toolNames(tools)["abs_find_misorganized_items"] {
+		t.Fatalf("expected abs_find_misorganized_items in tools: %#v", tools.Tools)
+	}
 
 	resources, err := session.ListResources(ctx, &mcp.ListResourcesParams{})
 	if err != nil {
@@ -175,6 +178,22 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	}
 	if searchResult.IsError {
 		t.Fatalf("abs_search_library returned tool error: %#v", searchResult.Content)
+	}
+
+	layoutResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_find_misorganized_items",
+		Arguments: map[string]any{"libraryId": "lib-audio"},
+	})
+	if err != nil {
+		t.Fatalf("call abs_find_misorganized_items: %v", err)
+	}
+	if layoutResult.IsError {
+		t.Fatalf("abs_find_misorganized_items returned tool error: %#v", layoutResult.Content)
+	}
+	var layoutOutput FindMisorganizedItemsOutput
+	marshalStructuredOutput(t, layoutResult.StructuredContent, &layoutOutput)
+	if layoutOutput.CheckedCount != 3 || layoutOutput.MisorganizedCount != 3 {
+		t.Fatalf("unexpected layout audit output: %#v", layoutOutput)
 	}
 
 	statsResult, err := session.CallTool(ctx, &mcp.CallToolParams{

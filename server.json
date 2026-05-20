@@ -3,7 +3,7 @@
   "name": "io.github.jeeftor/abs-mcp",
   "title": "Audiobookshelf MCP",
   "description": "Inspect and safely operate Audiobookshelf libraries over MCP.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "repository": {
     "url": "https://github.com/jeeftor/abs-mcp",
     "source": "github"
@@ -11,8 +11,8 @@
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/jeeftor/abs-mcp:0.1.1",
-      "version": "0.1.1",
+      "identifier": "ghcr.io/jeeftor/abs-mcp:0.2.0",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       },
