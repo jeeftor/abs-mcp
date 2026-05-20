@@ -15,16 +15,26 @@ import (
 const (
 	defaultTimeout = 30 * time.Second
 
-	KeyBaseURL          = "base-url"
-	KeyAPIKey           = "api-key"
-	KeyEnvFile          = "env-file"
-	KeyTimeout          = "timeout"
-	KeyReadOnly         = "read-only"
-	KeyFixtureDir       = "fixture-dir"
+	// KeyBaseURL is the configuration key for the Audiobookshelf base URL.
+	KeyBaseURL = "base-url"
+	// KeyAPIKey is the configuration key for the Audiobookshelf API key.
+	KeyAPIKey = "api-key"
+	// KeyEnvFile is the configuration key for a Docker-style environment file.
+	KeyEnvFile = "env-file"
+	// KeyTimeout is the configuration key for Audiobookshelf request timeout.
+	KeyTimeout = "timeout"
+	// KeyReadOnly is the configuration key for blocking mutating tools.
+	KeyReadOnly = "read-only"
+	// KeyFixtureDir is the configuration key for the local ABS fixture path.
+	KeyFixtureDir = "fixture-dir"
+	// KeyExtraHeadersFile is the configuration key for extra request headers.
 	KeyExtraHeadersFile = "extra-headers-file"
-	KeyExtraHeader      = "header"
-	KeyTLSCACertFile    = "tls-ca-cert-file"
-	KeyTLSSkipVerify    = "tls-insecure-skip-verify"
+	// KeyExtraHeader is the configuration key for one inline extra header.
+	KeyExtraHeader = "header"
+	// KeyTLSCACertFile is the configuration key for a custom TLS CA bundle.
+	KeyTLSCACertFile = "tls-ca-cert-file"
+	// KeyTLSSkipVerify is the configuration key for temporary TLS verification bypass.
+	KeyTLSSkipVerify = "tls-insecure-skip-verify"
 )
 
 var envFileKeys = map[string]string{

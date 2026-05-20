@@ -29,7 +29,8 @@ maintenance workflows.
 ## Highlights
 
 - Read-only by default; scan and cleanup tools require `ABS_READ_ONLY=false`.
-- Runs as a local stdio MCP server from a single Go binary or Docker image.
+- Ships as a local stdio MCP server from a single Go binary or Docker image;
+  Streamable HTTP is a good future fit for hosted or multi-client deployments.
 - Supports env vars, Docker-style env files, extra headers, and custom TLS CA
   bundles.
 - Includes source-backed Audiobookshelf API inventory resources and repeatable
@@ -377,6 +378,19 @@ Stop the fixture when done:
 
 ```bash
 make abs-dev-down
+```
+
+Install the local pre-commit hooks:
+
+```bash
+prek install
+prek install --hook-type commit-msg
+```
+
+Run all hooks manually:
+
+```bash
+prek run --all-files
 ```
 
 ## Tests
