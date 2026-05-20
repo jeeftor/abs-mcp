@@ -135,6 +135,11 @@ For client-specific snippets, see [Client Configs](#client-configs).
 
 ### Tools
 
+The server exposes all registered tools in the README, grouped by whether they
+can change Audiobookshelf state.
+
+Read-only tools:
+
 - `abs_health_check`
 - `abs_list_libraries`
 - `abs_get_library`
@@ -145,14 +150,21 @@ For client-specific snippets, see [Client Configs](#client-configs).
 - `abs_get_filter_data`
 - `abs_get_item_metadata_object`
 - `abs_find_misorganized_items`
+
+Implemented mutating tools:
+
 - `abs_scan_library`
 - `abs_scan_library_and_wait`
 - `abs_scan_item`
-- `abs_update_item_metadata`
 - `abs_update_item_cover`
 - `abs_remove_item_cover`
-- `abs_match_item`
 - `abs_update_item_chapters`
+- `abs_remove_library_items_with_issues`
+
+Planned mutating tools advertised for discovery:
+
+- `abs_update_item_metadata`
+- `abs_match_item`
 - `abs_update_item_tracks`
 - `abs_create_collection`
 - `abs_update_collection`
@@ -164,7 +176,6 @@ For client-specific snippets, see [Client Configs](#client-configs).
 - `abs_delete_playlist`
 - `abs_add_playlist_item`
 - `abs_remove_playlist_item`
-- `abs_remove_library_items_with_issues`
 
 Mutating tools are blocked by default because `ABS_READ_ONLY` defaults to
 `true`. Scan tools, issue cleanup, `abs_update_item_cover`,
