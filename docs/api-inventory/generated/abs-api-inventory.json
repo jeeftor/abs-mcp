@@ -1,0 +1,2688 @@
+{
+  "routes": [
+    {
+      "admin_likely": true,
+      "group": "api-keys",
+      "handler_controller": "ApiKeyController",
+      "handler_method": "getAll",
+      "method": "GET",
+      "middleware": [
+        "ApiKeyController.middleware"
+      ],
+      "mutates": false,
+      "path": "/api-keys",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": true,
+      "group": "api-keys",
+      "handler_controller": "ApiKeyController",
+      "handler_method": "create",
+      "method": "POST",
+      "middleware": [
+        "ApiKeyController.middleware"
+      ],
+      "mutates": true,
+      "path": "/api-keys",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": true,
+      "group": "api-keys",
+      "handler_controller": "ApiKeyController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "ApiKeyController.middleware"
+      ],
+      "mutates": true,
+      "path": "/api-keys/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": true,
+      "group": "api-keys",
+      "handler_controller": "ApiKeyController",
+      "handler_method": "update",
+      "method": "PATCH",
+      "middleware": [
+        "ApiKeyController.middleware"
+      ],
+      "mutates": true,
+      "path": "/api-keys/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "auth-settings",
+      "handler_controller": "MiscController",
+      "handler_method": "getAuthSettings",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/auth-settings",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "auth-settings",
+      "handler_controller": "MiscController",
+      "handler_method": "updateAuthSettings",
+      "method": "PATCH",
+      "middleware": [],
+      "mutates": true,
+      "path": "/auth-settings",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "authorize",
+      "handler_controller": "MiscController",
+      "handler_method": "authorize",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/authorize",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "authors",
+      "handler_controller": "AuthorController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "AuthorController.middleware"
+      ],
+      "mutates": true,
+      "path": "/authors/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "authors",
+      "handler_controller": "AuthorController",
+      "handler_method": "findOne",
+      "method": "GET",
+      "middleware": [
+        "AuthorController.middleware"
+      ],
+      "mutates": false,
+      "path": "/authors/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "authors",
+      "handler_controller": "AuthorController",
+      "handler_method": "update",
+      "method": "PATCH",
+      "middleware": [
+        "AuthorController.middleware"
+      ],
+      "mutates": true,
+      "path": "/authors/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "authors",
+      "handler_controller": "AuthorController",
+      "handler_method": "deleteImage",
+      "method": "DELETE",
+      "middleware": [
+        "AuthorController.middleware"
+      ],
+      "mutates": true,
+      "path": "/authors/:id/image",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "authors",
+      "handler_controller": "AuthorController",
+      "handler_method": "getImage",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/authors/:id/image",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "authors",
+      "handler_controller": "AuthorController",
+      "handler_method": "uploadImage",
+      "method": "POST",
+      "middleware": [
+        "AuthorController.middleware"
+      ],
+      "mutates": true,
+      "path": "/authors/:id/image",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "authors",
+      "handler_controller": "AuthorController",
+      "handler_method": "match",
+      "method": "POST",
+      "middleware": [
+        "AuthorController.middleware"
+      ],
+      "mutates": true,
+      "path": "/authors/:id/match",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "backups",
+      "handler_controller": "BackupController",
+      "handler_method": "getAll",
+      "method": "GET",
+      "middleware": [
+        "BackupController.middleware"
+      ],
+      "mutates": false,
+      "path": "/backups",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "backups",
+      "handler_controller": "BackupController",
+      "handler_method": "create",
+      "method": "POST",
+      "middleware": [
+        "BackupController.middleware"
+      ],
+      "mutates": true,
+      "path": "/backups",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "backups",
+      "handler_controller": "BackupController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "BackupController.middleware"
+      ],
+      "mutates": true,
+      "path": "/backups/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "backups",
+      "handler_controller": "BackupController",
+      "handler_method": "apply",
+      "method": "GET",
+      "middleware": [
+        "BackupController.middleware"
+      ],
+      "mutates": false,
+      "path": "/backups/:id/apply",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "backups",
+      "handler_controller": "BackupController",
+      "handler_method": "download",
+      "method": "GET",
+      "middleware": [
+        "BackupController.middleware"
+      ],
+      "mutates": false,
+      "path": "/backups/:id/download",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "backups",
+      "handler_controller": "BackupController",
+      "handler_method": "updatePath",
+      "method": "PATCH",
+      "middleware": [
+        "BackupController.middleware"
+      ],
+      "mutates": true,
+      "path": "/backups/path",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "backups",
+      "handler_controller": "BackupController",
+      "handler_method": "upload",
+      "method": "POST",
+      "middleware": [
+        "BackupController.middleware"
+      ],
+      "mutates": true,
+      "path": "/backups/upload",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "cache",
+      "handler_controller": "CacheController",
+      "handler_method": "purgeItemsCache",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/cache/items/purge",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "cache",
+      "handler_controller": "CacheController",
+      "handler_method": "purgeCache",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/cache/purge",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "collections",
+      "handler_controller": "CollectionController",
+      "handler_method": "findAll",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/collections",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "collections",
+      "handler_controller": "CollectionController",
+      "handler_method": "create",
+      "method": "POST",
+      "middleware": [
+        "CollectionController.middleware"
+      ],
+      "mutates": true,
+      "path": "/collections",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "collections",
+      "handler_controller": "CollectionController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "CollectionController.middleware"
+      ],
+      "mutates": true,
+      "path": "/collections/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "collections",
+      "handler_controller": "CollectionController",
+      "handler_method": "findOne",
+      "method": "GET",
+      "middleware": [
+        "CollectionController.middleware"
+      ],
+      "mutates": false,
+      "path": "/collections/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "collections",
+      "handler_controller": "CollectionController",
+      "handler_method": "update",
+      "method": "PATCH",
+      "middleware": [
+        "CollectionController.middleware"
+      ],
+      "mutates": true,
+      "path": "/collections/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "collections",
+      "handler_controller": "CollectionController",
+      "handler_method": "addBatch",
+      "method": "POST",
+      "middleware": [
+        "CollectionController.middleware"
+      ],
+      "mutates": true,
+      "path": "/collections/:id/batch/add",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "collections",
+      "handler_controller": "CollectionController",
+      "handler_method": "removeBatch",
+      "method": "POST",
+      "middleware": [
+        "CollectionController.middleware"
+      ],
+      "mutates": true,
+      "path": "/collections/:id/batch/remove",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "collections",
+      "handler_controller": "CollectionController",
+      "handler_method": "addBook",
+      "method": "POST",
+      "middleware": [
+        "CollectionController.middleware"
+      ],
+      "mutates": true,
+      "path": "/collections/:id/book",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "collections",
+      "handler_controller": "CollectionController",
+      "handler_method": "removeBook",
+      "method": "DELETE",
+      "middleware": [
+        "CollectionController.middleware"
+      ],
+      "mutates": true,
+      "path": "/collections/:id/book/:bookId",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "custom-metadata-providers",
+      "handler_controller": "CustomMetadataProviderController",
+      "handler_method": "getAll",
+      "method": "GET",
+      "middleware": [
+        "CustomMetadataProviderController.middleware"
+      ],
+      "mutates": false,
+      "path": "/custom-metadata-providers",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "custom-metadata-providers",
+      "handler_controller": "CustomMetadataProviderController",
+      "handler_method": "create",
+      "method": "POST",
+      "middleware": [
+        "CustomMetadataProviderController.middleware"
+      ],
+      "mutates": true,
+      "path": "/custom-metadata-providers",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "custom-metadata-providers",
+      "handler_controller": "CustomMetadataProviderController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "CustomMetadataProviderController.middleware"
+      ],
+      "mutates": true,
+      "path": "/custom-metadata-providers/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": true,
+      "group": "emails",
+      "handler_controller": "EmailController",
+      "handler_method": "updateEReaderDevices",
+      "method": "POST",
+      "middleware": [
+        "EmailController.adminMiddleware"
+      ],
+      "mutates": true,
+      "path": "/emails/ereader-devices",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "emails",
+      "handler_controller": "EmailController",
+      "handler_method": "sendEBookToDevice",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/emails/send-ebook-to-device",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": true,
+      "group": "emails",
+      "handler_controller": "EmailController",
+      "handler_method": "getSettings",
+      "method": "GET",
+      "middleware": [
+        "EmailController.adminMiddleware"
+      ],
+      "mutates": false,
+      "path": "/emails/settings",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": true,
+      "group": "emails",
+      "handler_controller": "EmailController",
+      "handler_method": "updateSettings",
+      "method": "PATCH",
+      "middleware": [
+        "EmailController.adminMiddleware"
+      ],
+      "mutates": true,
+      "path": "/emails/settings",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": true,
+      "group": "emails",
+      "handler_controller": "EmailController",
+      "handler_method": "sendTest",
+      "method": "POST",
+      "middleware": [
+        "EmailController.adminMiddleware"
+      ],
+      "mutates": true,
+      "path": "/emails/test",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "feeds",
+      "handler_controller": "RSSFeedController",
+      "handler_method": "getAll",
+      "method": "GET",
+      "middleware": [
+        "RSSFeedController.middleware"
+      ],
+      "mutates": false,
+      "path": "/feeds",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "feeds",
+      "handler_controller": "RSSFeedController",
+      "handler_method": "closeRSSFeed",
+      "method": "POST",
+      "middleware": [
+        "RSSFeedController.middleware"
+      ],
+      "mutates": true,
+      "path": "/feeds/:id/close",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "feeds",
+      "handler_controller": "RSSFeedController",
+      "handler_method": "openRSSFeedForCollection",
+      "method": "POST",
+      "middleware": [
+        "RSSFeedController.middleware"
+      ],
+      "mutates": true,
+      "path": "/feeds/collection/:collectionId/open",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "feeds",
+      "handler_controller": "RSSFeedController",
+      "handler_method": "openRSSFeedForItem",
+      "method": "POST",
+      "middleware": [
+        "RSSFeedController.middleware"
+      ],
+      "mutates": true,
+      "path": "/feeds/item/:itemId/open",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "feeds",
+      "handler_controller": "RSSFeedController",
+      "handler_method": "openRSSFeedForSeries",
+      "method": "POST",
+      "middleware": [
+        "RSSFeedController.middleware"
+      ],
+      "mutates": true,
+      "path": "/feeds/series/:seriesId/open",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "filesystem",
+      "handler_controller": "FileSystemController",
+      "handler_method": "getPaths",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/filesystem",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "filesystem",
+      "handler_controller": "FileSystemController",
+      "handler_method": "checkPathExists",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/filesystem/pathexists",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "genres",
+      "handler_controller": "MiscController",
+      "handler_method": "getAllGenres",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/genres",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "genres",
+      "handler_controller": "MiscController",
+      "handler_method": "deleteGenre",
+      "method": "DELETE",
+      "middleware": [],
+      "mutates": true,
+      "path": "/genres/:genre",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "genres",
+      "handler_controller": "MiscController",
+      "handler_method": "renameGenre",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/genres/rename",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "findOne",
+      "method": "GET",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": false,
+      "path": "/items/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "updateMediaChapters",
+      "method": "POST",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/chapters",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "removeCover",
+      "method": "DELETE",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/cover",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "getCover",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/items/:id/cover",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "updateCover",
+      "method": "PATCH",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/cover",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "uploadCover",
+      "method": "POST",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/cover",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "download",
+      "method": "GET",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": false,
+      "path": "/items/:id/download",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "updateEbookFileStatus",
+      "method": "PATCH",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/ebook/:fileid/status",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "getEBookFile",
+      "method": "GET",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": false,
+      "path": "/items/:id/ebook/:fileid?",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "getFFprobeData",
+      "method": "GET",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": false,
+      "path": "/items/:id/ffprobe/:fileid",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "deleteLibraryFile",
+      "method": "DELETE",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/file/:fileid",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "getLibraryFile",
+      "method": "GET",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": false,
+      "path": "/items/:id/file/:fileid",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "downloadLibraryFile",
+      "method": "GET",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": false,
+      "path": "/items/:id/file/:fileid/download",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "match",
+      "method": "POST",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/match",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "updateMedia",
+      "method": "PATCH",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/media",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "getMetadataObject",
+      "method": "GET",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": false,
+      "path": "/items/:id/metadata-object",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "startPlaybackSession",
+      "method": "POST",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/play",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "startEpisodePlaybackSession",
+      "method": "POST",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/play/:episodeId",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "scan",
+      "method": "POST",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/scan",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "updateTracks",
+      "method": "PATCH",
+      "middleware": [
+        "LibraryItemController.middleware"
+      ],
+      "mutates": true,
+      "path": "/items/:id/tracks",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "batchDelete",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/items/batch/delete",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "batchGet",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/items/batch/get",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "batchQuickMatch",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/items/batch/quickmatch",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "batchScan",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/items/batch/scan",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "items",
+      "handler_controller": "LibraryItemController",
+      "handler_method": "batchUpdate",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/items/batch/update",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "",
+      "handler_method": "",
+      "method": "GET",
+      "middleware": [
+        "this.apiCacheManager.middleware"
+      ],
+      "mutates": false,
+      "path": "/^\\/libraries/",
+      "path_kind": "regex",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "findAll",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/libraries",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "create",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/libraries",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": true,
+      "path": "/libraries/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "findOne",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "update",
+      "method": "PATCH",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": true,
+      "path": "/libraries/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getAuthors",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/authors",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getCollectionsForLibrary",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/collections",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "downloadMultiple",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/download",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getEpisodeDownloadQueue",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/episode-downloads",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getLibraryFilterData",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/filterdata",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "removeLibraryItemsWithIssues",
+      "method": "DELETE",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": true,
+      "path": "/libraries/:id/issues",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getLibraryItems",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/items",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "matchAll",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/matchall",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getNarrators",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/narrators",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "removeNarrator",
+      "method": "DELETE",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": true,
+      "path": "/libraries/:id/narrators/:narratorId",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "updateNarrator",
+      "method": "PATCH",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": true,
+      "path": "/libraries/:id/narrators/:narratorId",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getOPMLFile",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/opml",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getUserPersonalizedShelves",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/personalized",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getUserPlaylistsForLibrary",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/playlists",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getPodcastTitles",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/podcast-titles",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getRecentEpisodes",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/recent-episodes",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "removeAllMetadataFiles",
+      "method": "POST",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": true,
+      "path": "/libraries/:id/remove-metadata",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "scan",
+      "method": "POST",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": true,
+      "path": "/libraries/:id/scan",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "search",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/search",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getAllSeriesForLibrary",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/series",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "getSeriesForLibrary",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/series/:seriesId",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "stats",
+      "method": "GET",
+      "middleware": [
+        "LibraryController.middleware"
+      ],
+      "mutates": false,
+      "path": "/libraries/:id/stats",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "libraries",
+      "handler_controller": "LibraryController",
+      "handler_method": "reorder",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/libraries/order",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "logger-data",
+      "handler_controller": "MiscController",
+      "handler_method": "getLoggerData",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/logger-data",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "getCurrentUser",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "updateUserEReaderDevices",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/me/ereader-devices",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "updateBookmark",
+      "method": "PATCH",
+      "middleware": [],
+      "mutates": true,
+      "path": "/me/item/:id/bookmark",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "createBookmark",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/me/item/:id/bookmark",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "removeBookmark",
+      "method": "DELETE",
+      "middleware": [],
+      "mutates": true,
+      "path": "/me/item/:id/bookmark/:time",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "getItemListeningSessions",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me/item/listening-sessions/:libraryItemId/:episodeId?",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "getAllLibraryItemsInProgress",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me/items-in-progress",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "getListeningSessions",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me/listening-sessions",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "getListeningStats",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me/listening-stats",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "updatePassword",
+      "method": "PATCH",
+      "middleware": [
+        "this.auth.authRateLimiter"
+      ],
+      "mutates": true,
+      "path": "/me/password",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "removeMediaProgress",
+      "method": "DELETE",
+      "middleware": [],
+      "mutates": true,
+      "path": "/me/progress/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "getMediaProgress",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me/progress/:id/:episodeId?",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "removeItemFromContinueListening",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me/progress/:id/remove-from-continue-listening",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "createUpdateMediaProgress",
+      "method": "PATCH",
+      "middleware": [],
+      "mutates": true,
+      "path": "/me/progress/:libraryItemId/:episodeId?",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "batchUpdateMediaProgress",
+      "method": "PATCH",
+      "middleware": [],
+      "mutates": true,
+      "path": "/me/progress/batch/update",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "readdSeriesFromContinueListening",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me/series/:id/readd-to-continue-listening",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "removeSeriesFromContinueListening",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me/series/:id/remove-from-continue-listening",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "me",
+      "handler_controller": "MeController",
+      "handler_method": "getStatsForYear",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/me/stats/year/:year",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "notificationdata",
+      "handler_controller": "NotificationController",
+      "handler_method": "getData",
+      "method": "GET",
+      "middleware": [
+        "NotificationController.middleware"
+      ],
+      "mutates": false,
+      "path": "/notificationdata",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "notifications",
+      "handler_controller": "NotificationController",
+      "handler_method": "get",
+      "method": "GET",
+      "middleware": [
+        "NotificationController.middleware"
+      ],
+      "mutates": false,
+      "path": "/notifications",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "notifications",
+      "handler_controller": "NotificationController",
+      "handler_method": "update",
+      "method": "PATCH",
+      "middleware": [
+        "NotificationController.middleware"
+      ],
+      "mutates": true,
+      "path": "/notifications",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "notifications",
+      "handler_controller": "NotificationController",
+      "handler_method": "createNotification",
+      "method": "POST",
+      "middleware": [
+        "NotificationController.middleware"
+      ],
+      "mutates": true,
+      "path": "/notifications",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "notifications",
+      "handler_controller": "NotificationController",
+      "handler_method": "deleteNotification",
+      "method": "DELETE",
+      "middleware": [
+        "NotificationController.middleware"
+      ],
+      "mutates": true,
+      "path": "/notifications/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "notifications",
+      "handler_controller": "NotificationController",
+      "handler_method": "updateNotification",
+      "method": "PATCH",
+      "middleware": [
+        "NotificationController.middleware"
+      ],
+      "mutates": true,
+      "path": "/notifications/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "notifications",
+      "handler_controller": "NotificationController",
+      "handler_method": "sendNotificationTest",
+      "method": "GET",
+      "middleware": [
+        "NotificationController.middleware"
+      ],
+      "mutates": false,
+      "path": "/notifications/:id/test",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "notifications",
+      "handler_controller": "NotificationController",
+      "handler_method": "fireTestEvent",
+      "method": "GET",
+      "middleware": [
+        "NotificationController.middleware"
+      ],
+      "mutates": false,
+      "path": "/notifications/test",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "findAllForUser",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/playlists",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "create",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/playlists",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "PlaylistController.middleware"
+      ],
+      "mutates": true,
+      "path": "/playlists/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "findOne",
+      "method": "GET",
+      "middleware": [
+        "PlaylistController.middleware"
+      ],
+      "mutates": false,
+      "path": "/playlists/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "update",
+      "method": "PATCH",
+      "middleware": [
+        "PlaylistController.middleware"
+      ],
+      "mutates": true,
+      "path": "/playlists/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "addBatch",
+      "method": "POST",
+      "middleware": [
+        "PlaylistController.middleware"
+      ],
+      "mutates": true,
+      "path": "/playlists/:id/batch/add",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "removeBatch",
+      "method": "POST",
+      "middleware": [
+        "PlaylistController.middleware"
+      ],
+      "mutates": true,
+      "path": "/playlists/:id/batch/remove",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "addItem",
+      "method": "POST",
+      "middleware": [
+        "PlaylistController.middleware"
+      ],
+      "mutates": true,
+      "path": "/playlists/:id/item",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "removeItem",
+      "method": "DELETE",
+      "middleware": [
+        "PlaylistController.middleware"
+      ],
+      "mutates": true,
+      "path": "/playlists/:id/item/:libraryItemId/:episodeId?",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "playlists",
+      "handler_controller": "PlaylistController",
+      "handler_method": "createFromCollection",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/playlists/collection/:collectionId",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "create",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/podcasts",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "checkNewEpisodes",
+      "method": "GET",
+      "middleware": [
+        "PodcastController.middleware"
+      ],
+      "mutates": false,
+      "path": "/podcasts/:id/checknew",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "clearEpisodeDownloadQueue",
+      "method": "GET",
+      "middleware": [
+        "PodcastController.middleware"
+      ],
+      "mutates": false,
+      "path": "/podcasts/:id/clear-queue",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "downloadEpisodes",
+      "method": "POST",
+      "middleware": [
+        "PodcastController.middleware"
+      ],
+      "mutates": true,
+      "path": "/podcasts/:id/download-episodes",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "getEpisodeDownloads",
+      "method": "GET",
+      "middleware": [
+        "PodcastController.middleware"
+      ],
+      "mutates": false,
+      "path": "/podcasts/:id/downloads",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "removeEpisode",
+      "method": "DELETE",
+      "middleware": [
+        "PodcastController.middleware"
+      ],
+      "mutates": true,
+      "path": "/podcasts/:id/episode/:episodeId",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "getEpisode",
+      "method": "GET",
+      "middleware": [
+        "PodcastController.middleware"
+      ],
+      "mutates": false,
+      "path": "/podcasts/:id/episode/:episodeId",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "updateEpisode",
+      "method": "PATCH",
+      "middleware": [
+        "PodcastController.middleware"
+      ],
+      "mutates": true,
+      "path": "/podcasts/:id/episode/:episodeId",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "quickMatchEpisodes",
+      "method": "POST",
+      "middleware": [
+        "PodcastController.middleware"
+      ],
+      "mutates": true,
+      "path": "/podcasts/:id/match-episodes",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "findEpisode",
+      "method": "GET",
+      "middleware": [
+        "PodcastController.middleware"
+      ],
+      "mutates": false,
+      "path": "/podcasts/:id/search-episode",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "getPodcastFeed",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/podcasts/feed",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "bulkCreatePodcastsFromOpmlFeedUrls",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/podcasts/opml/create",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "podcasts",
+      "handler_controller": "PodcastController",
+      "handler_method": "getFeedsFromOPMLText",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/podcasts/opml/parse",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "search",
+      "handler_controller": "SearchController",
+      "handler_method": "findAuthor",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/search/authors",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "search",
+      "handler_controller": "SearchController",
+      "handler_method": "findBooks",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/search/books",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "search",
+      "handler_controller": "SearchController",
+      "handler_method": "findChapters",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/search/chapters",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "search",
+      "handler_controller": "SearchController",
+      "handler_method": "findCovers",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/search/covers",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "search",
+      "handler_controller": "SearchController",
+      "handler_method": "findPodcasts",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/search/podcast",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "search",
+      "handler_controller": "SearchController",
+      "handler_method": "getAllProviders",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/search/providers",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "series",
+      "handler_controller": "SeriesController",
+      "handler_method": "findOne",
+      "method": "GET",
+      "middleware": [
+        "SeriesController.middleware"
+      ],
+      "mutates": false,
+      "path": "/series/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "series",
+      "handler_controller": "SeriesController",
+      "handler_method": "update",
+      "method": "PATCH",
+      "middleware": [
+        "SeriesController.middleware"
+      ],
+      "mutates": true,
+      "path": "/series/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "session",
+      "handler_controller": "SessionController",
+      "handler_method": "getOpenSession",
+      "method": "GET",
+      "middleware": [
+        "SessionController.openSessionMiddleware"
+      ],
+      "mutates": false,
+      "path": "/session/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "session",
+      "handler_controller": "SessionController",
+      "handler_method": "close",
+      "method": "POST",
+      "middleware": [
+        "SessionController.openSessionMiddleware"
+      ],
+      "mutates": true,
+      "path": "/session/:id/close",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "session",
+      "handler_controller": "SessionController",
+      "handler_method": "sync",
+      "method": "POST",
+      "middleware": [
+        "SessionController.openSessionMiddleware"
+      ],
+      "mutates": true,
+      "path": "/session/:id/sync",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "session",
+      "handler_controller": "SessionController",
+      "handler_method": "syncLocal",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/session/local",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "session",
+      "handler_controller": "SessionController",
+      "handler_method": "syncLocalSessions",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/session/local-all",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "sessions",
+      "handler_controller": "SessionController",
+      "handler_method": "getAllWithUserData",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/sessions",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "sessions",
+      "handler_controller": "SessionController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "SessionController.middleware"
+      ],
+      "mutates": true,
+      "path": "/sessions/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "sessions",
+      "handler_controller": "SessionController",
+      "handler_method": "batchDelete",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/sessions/batch/delete",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "sessions",
+      "handler_controller": "SessionController",
+      "handler_method": "getOpenSessions",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/sessions/open",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "settings",
+      "handler_controller": "MiscController",
+      "handler_method": "updateServerSettings",
+      "method": "PATCH",
+      "middleware": [],
+      "mutates": true,
+      "path": "/settings",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "share",
+      "handler_controller": "ShareController",
+      "handler_method": "createMediaItemShare",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/share/mediaitem",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "share",
+      "handler_controller": "ShareController",
+      "handler_method": "deleteMediaItemShare",
+      "method": "DELETE",
+      "middleware": [],
+      "mutates": true,
+      "path": "/share/mediaitem/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "sorting-prefixes",
+      "handler_controller": "MiscController",
+      "handler_method": "updateSortingPrefixes",
+      "method": "PATCH",
+      "middleware": [],
+      "mutates": true,
+      "path": "/sorting-prefixes",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "stats",
+      "handler_controller": "StatsController",
+      "handler_method": "getServerStats",
+      "method": "GET",
+      "middleware": [
+        "StatsController.middleware"
+      ],
+      "mutates": false,
+      "path": "/stats/server",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "stats",
+      "handler_controller": "StatsController",
+      "handler_method": "getAdminStatsForYear",
+      "method": "GET",
+      "middleware": [
+        "StatsController.middleware"
+      ],
+      "mutates": false,
+      "path": "/stats/year/:year",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "tags",
+      "handler_controller": "MiscController",
+      "handler_method": "getAllTags",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/tags",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "tags",
+      "handler_controller": "MiscController",
+      "handler_method": "deleteTag",
+      "method": "DELETE",
+      "middleware": [],
+      "mutates": true,
+      "path": "/tags/:tag",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "tags",
+      "handler_controller": "MiscController",
+      "handler_method": "renameTag",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/tags/rename",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "tasks",
+      "handler_controller": "MiscController",
+      "handler_method": "getTasks",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/tasks",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "tools",
+      "handler_controller": "ToolsController",
+      "handler_method": "batchEmbedMetadata",
+      "method": "POST",
+      "middleware": [
+        "ToolsController.middleware"
+      ],
+      "mutates": true,
+      "path": "/tools/batch/embed-metadata",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "tools",
+      "handler_controller": "ToolsController",
+      "handler_method": "embedAudioFileMetadata",
+      "method": "POST",
+      "middleware": [
+        "ToolsController.middleware"
+      ],
+      "mutates": true,
+      "path": "/tools/item/:id/embed-metadata",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "tools",
+      "handler_controller": "ToolsController",
+      "handler_method": "cancelM4bEncode",
+      "method": "DELETE",
+      "middleware": [
+        "ToolsController.middleware"
+      ],
+      "mutates": true,
+      "path": "/tools/item/:id/encode-m4b",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "tools",
+      "handler_controller": "ToolsController",
+      "handler_method": "encodeM4b",
+      "method": "POST",
+      "middleware": [
+        "ToolsController.middleware"
+      ],
+      "mutates": true,
+      "path": "/tools/item/:id/encode-m4b",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "upload",
+      "handler_controller": "MiscController",
+      "handler_method": "handleUpload",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/upload",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "users",
+      "handler_controller": "UserController",
+      "handler_method": "findAll",
+      "method": "GET",
+      "middleware": [
+        "UserController.middleware"
+      ],
+      "mutates": false,
+      "path": "/users",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "users",
+      "handler_controller": "UserController",
+      "handler_method": "create",
+      "method": "POST",
+      "middleware": [
+        "UserController.middleware"
+      ],
+      "mutates": true,
+      "path": "/users",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "users",
+      "handler_controller": "UserController",
+      "handler_method": "delete",
+      "method": "DELETE",
+      "middleware": [
+        "UserController.middleware"
+      ],
+      "mutates": true,
+      "path": "/users/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "users",
+      "handler_controller": "UserController",
+      "handler_method": "findOne",
+      "method": "GET",
+      "middleware": [
+        "UserController.middleware"
+      ],
+      "mutates": false,
+      "path": "/users/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "users",
+      "handler_controller": "UserController",
+      "handler_method": "update",
+      "method": "PATCH",
+      "middleware": [
+        "UserController.middleware"
+      ],
+      "mutates": true,
+      "path": "/users/:id",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "users",
+      "handler_controller": "UserController",
+      "handler_method": "getListeningSessions",
+      "method": "GET",
+      "middleware": [
+        "UserController.middleware"
+      ],
+      "mutates": false,
+      "path": "/users/:id/listening-sessions",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "users",
+      "handler_controller": "UserController",
+      "handler_method": "getListeningStats",
+      "method": "GET",
+      "middleware": [
+        "UserController.middleware"
+      ],
+      "mutates": false,
+      "path": "/users/:id/listening-stats",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "users",
+      "handler_controller": "UserController",
+      "handler_method": "unlinkFromOpenID",
+      "method": "PATCH",
+      "middleware": [
+        "UserController.middleware"
+      ],
+      "mutates": true,
+      "path": "/users/:id/openid-unlink",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "users",
+      "handler_controller": "UserController",
+      "handler_method": "getOnlineUsers",
+      "method": "GET",
+      "middleware": [],
+      "mutates": false,
+      "path": "/users/online",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "validate-cron",
+      "handler_controller": "MiscController",
+      "handler_method": "validateCronExpression",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/validate-cron",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    },
+    {
+      "admin_likely": false,
+      "group": "watcher",
+      "handler_controller": "MiscController",
+      "handler_method": "updateWatchedPath",
+      "method": "POST",
+      "middleware": [],
+      "mutates": true,
+      "path": "/watcher/update",
+      "path_kind": "literal",
+      "source": "server/routers/ApiRouter.js"
+    }
+  ],
+  "source": {
+    "source_path": "server/routers/ApiRouter.js",
+    "source_ref": "2d0a5462d2234a8c1f853c9c23b790dc8e690fb5"
+  },
+  "summary": {
+    "by_group": {
+      "api-keys": 4,
+      "auth-settings": 2,
+      "authorize": 1,
+      "authors": 7,
+      "backups": 7,
+      "cache": 2,
+      "collections": 9,
+      "custom-metadata-providers": 3,
+      "emails": 5,
+      "feeds": 5,
+      "filesystem": 2,
+      "genres": 3,
+      "items": 26,
+      "libraries": 29,
+      "logger-data": 1,
+      "me": 18,
+      "notificationdata": 1,
+      "notifications": 7,
+      "playlists": 10,
+      "podcasts": 13,
+      "search": 6,
+      "series": 2,
+      "session": 5,
+      "sessions": 4,
+      "settings": 1,
+      "share": 2,
+      "sorting-prefixes": 1,
+      "stats": 2,
+      "tags": 3,
+      "tasks": 1,
+      "tools": 4,
+      "upload": 1,
+      "users": 9,
+      "validate-cron": 1,
+      "watcher": 1
+    },
+    "by_method": {
+      "DELETE": 25,
+      "GET": 83,
+      "PATCH": 25,
+      "POST": 65
+    },
+    "mutating_routes": 115,
+    "read_only_routes": 83,
+    "total_routes": 198
+  }
+}

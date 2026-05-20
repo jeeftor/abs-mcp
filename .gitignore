@@ -1,0 +1,10 @@
+# Python helper script cache.
+__pycache__/
+*.py[cod]
+
+# Local build and MCP client config artifacts.
+bin/
+.mcp*.json
+
+# Local OS/editor noise.
+.DS_Store
