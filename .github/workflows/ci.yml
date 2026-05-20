@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DOCKER_BUILD_RECORD_UPLOAD: false
+
 jobs:
   test:
     name: Test
