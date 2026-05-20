@@ -10,6 +10,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/jeeftor/abs-mcp/internal/config"
+	"github.com/jeeftor/abs-mcp/internal/version"
 )
 
 func TestMCPProtocolListsAndCallsTools(t *testing.T) {
@@ -33,6 +34,9 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 		t.Fatalf("connect MCP client: %v", err)
 	}
 	defer session.Close()
+	if got := session.InitializeResult().ServerInfo.Version; got != version.Version {
+		t.Fatalf("server version = %q, want %q", got, version.Version)
+	}
 
 	tools, err := session.ListTools(ctx, &mcp.ListToolsParams{})
 	if err != nil {

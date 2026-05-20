@@ -1,12 +1,14 @@
 # syntax=docker/dockerfile:1
 
 ARG BUILDER_IMAGE=golang:1.26-bookworm
+ARG VERSION=0.1.1
 
 FROM ${BUILDER_IMAGE} AS build
 
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 ARG INSTALL_MITRE_CERTS=false
+ARG VERSION
 
 WORKDIR /src
 ENV GOCACHE=/tmp/go-build
@@ -25,9 +27,11 @@ RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
-	go build -trimpath -ldflags="-s -w" -o /out/abs-mcp ./cmd/abs-mcp
+	go build -trimpath -ldflags="-s -w -X github.com/jeeftor/abs-mcp/internal/version.Version=${VERSION#v}" -o /out/abs-mcp ./cmd/abs-mcp
 
 FROM scratch
+
+LABEL io.modelcontextprotocol.server.name="io.github.jeeftor/abs-mcp"
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /out/abs-mcp /abs-mcp

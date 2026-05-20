@@ -39,6 +39,8 @@ Prompts:
 - `abs_scan_troubleshooting`
 - `abs_api_update_review`
 
+See [docs/tools.md](docs/tools.md) for tool inputs, output shapes, mutation behavior, and common errors.
+
 ## Configuration
 
 Environment variables and env files are the preferred configuration paths for
@@ -111,38 +113,169 @@ For private or corporate TLS certificates, prefer `ABS_TLS_CA_CERT_FILE` or
 `ABS_TLS_INSECURE_SKIP_VERIFY=true` or `--tls-insecure-skip-verify` only as a
 temporary fallback while fixing local trust.
 
+## Safety
+
+`abs-mcp` defaults to read-only mode. With `ABS_READ_ONLY=true`, all scan and
+cleanup tools are blocked before making Audiobookshelf API calls.
+
+These tools can mutate Audiobookshelf state and require `ABS_READ_ONLY=false`:
+
+- `abs_scan_library`
+- `abs_scan_library_and_wait`
+- `abs_scan_item`
+- `abs_remove_library_items_with_issues`
+
+`abs_remove_library_items_with_issues` also requires the exact confirmation
+string `remove issues from <libraryId>` and can check an expected issue count
+before it asks Audiobookshelf to remove missing or invalid items.
+
+The server requires an Audiobookshelf base URL and API key or bearer token.
+Prefer an Audiobookshelf API key with the least permissions needed for the
+tools you plan to expose. Bearer tokens, API keys, raw `Authorization` headers,
+and extra header values are not logged by this server. `Authorization` is
+rejected in `ABS_EXTRA_HEADERS_FILE`; use `ABS_API_KEY` for Audiobookshelf
+authentication.
+
+## Installation
+
+Download a release archive from
+`https://github.com/jeeftor/abs-mcp/releases`, unpack it, and point your MCP
+client at the `abs-mcp` binary. The server speaks MCP over stdio.
+
 Run over MCP stdio:
 
 ```bash
 go run ./cmd/abs-mcp
 ```
 
-Example Windsurf MCP config using an env file:
+Example stdio command for a downloaded binary:
+
+```bash
+ABS_BASE_URL=http://localhost:13378 \
+ABS_API_KEY=... \
+ABS_READ_ONLY=true \
+/path/to/abs-mcp
+```
+
+### Client Configs
+
+Claude Desktop, Cursor, VS Code, and Windsurf all support stdio MCP servers
+with a command, arguments, and environment values. Use an absolute binary path
+and prefer `env` or `--env-file` for secrets.
+
+Claude Desktop `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "Audiobookshelf": {
-      "command": "/Users/Shared/Docker/abs-mcp/bin/abs-mcp",
+      "command": "/path/to/abs-mcp",
       "args": [
         "--env-file",
-        "/Users/Shared/Docker/abs-mcp/.env",
+        "/path/to/abs-mcp.env",
         "--extra-headers-file",
-        "/Users/Shared/Docker/abs-mcp/cf-headers.json"
+        "/path/to/cf-headers.json"
       ]
     }
   }
 }
 ```
 
-Run the container image over MCP stdio:
+Claude Code:
+
+```bash
+claude mcp add Audiobookshelf /path/to/abs-mcp \
+  -e ABS_BASE_URL=http://localhost:13378 \
+  -e ABS_API_KEY=... \
+  -e ABS_READ_ONLY=true
+```
+
+Cursor `mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "Audiobookshelf": {
+      "command": "/path/to/abs-mcp",
+      "env": {
+        "ABS_BASE_URL": "http://localhost:13378",
+        "ABS_API_KEY": "...",
+        "ABS_READ_ONLY": "true"
+      }
+    }
+  }
+}
+```
+
+VS Code MCP config:
+
+```json
+{
+  "servers": {
+    "Audiobookshelf": {
+      "type": "stdio",
+      "command": "/path/to/abs-mcp",
+      "env": {
+        "ABS_BASE_URL": "http://localhost:13378",
+        "ABS_API_KEY": "...",
+        "ABS_READ_ONLY": "true"
+      }
+    }
+  }
+}
+```
+
+Windsurf MCP config using an env file:
+
+```json
+{
+  "mcpServers": {
+    "Audiobookshelf": {
+      "command": "/path/to/abs-mcp",
+      "args": [
+        "--env-file",
+        "/path/to/abs-mcp.env"
+      ]
+    }
+  }
+}
+```
+
+Docker-based stdio config:
+
+```json
+{
+  "mcpServers": {
+    "Audiobookshelf": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "ABS_BASE_URL=http://host.docker.internal:13378",
+        "-e",
+        "ABS_API_KEY",
+        "-e",
+        "ABS_READ_ONLY=true",
+        "ghcr.io/jeeftor/abs-mcp:0.1.1"
+      ],
+      "env": {
+        "ABS_API_KEY": "..."
+      }
+    }
+  }
+}
+```
+
+Run the container image directly over MCP stdio:
 
 ```bash
 docker run --rm -i \
   -e ABS_BASE_URL=http://host.docker.internal:13388 \
   -e ABS_API_KEY=... \
   -e ABS_READ_ONLY=true \
-  ghcr.io/jeeftor/abs-mcp:latest
+  ghcr.io/jeeftor/abs-mcp:0.1.1
 ```
 
 With Cloudflare Access headers and a corporate/private CA bundle:
@@ -155,7 +288,7 @@ docker run --rm -i \
   -e ABS_TLS_CA_CERT_FILE=/run/secrets/corporate-ca.pem \
   -v /path/to/headers.json:/run/secrets/abs-headers.json:ro \
   -v /path/to/corporate-ca.pem:/run/secrets/corporate-ca.pem:ro \
-  ghcr.io/jeeftor/abs-mcp:latest
+  ghcr.io/jeeftor/abs-mcp:0.1.1
 ```
 
 Build a local image:
@@ -220,3 +353,26 @@ image build on pushes and pull requests to `master`.
 Tags matching `v*` publish release archives for Linux, macOS, and Windows on
 amd64 and arm64. The release workflow also publishes a multi-arch Docker image
 to `ghcr.io/jeeftor/abs-mcp`.
+
+## MCP Registry
+
+This repository is prepared for the official MCP Registry using the OCI package
+path:
+
+- Registry name: `io.github.jeeftor/abs-mcp`
+- Package: `ghcr.io/jeeftor/abs-mcp:<version>`
+- Transport: `stdio`
+- Metadata file: `server.json`
+
+The Docker image includes the required MCP ownership label
+`io.modelcontextprotocol.server.name=io.github.jeeftor/abs-mcp`.
+
+On `v*` tags, the release workflow builds the immutable GHCR image tag, rewrites
+`server.json` to the tag version, authenticates to the MCP Registry with GitHub
+OIDC, and publishes with `mcp-publisher`. GitHub OIDC does not require a
+dedicated registry secret.
+
+After the official registry entry is published, downstream aggregators can pick
+it up from the registry API. Glama is the next practical listing target.
+Smithery should wait until this project either ships an MCPB bundle for stdio
+distribution or adds a public Streamable HTTP transport with appropriate auth.

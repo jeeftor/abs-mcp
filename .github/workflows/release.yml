@@ -51,6 +51,7 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          server_version="${VERSION#v}"
           package="abs-mcp_${VERSION}_${GOOS}_${GOARCH}"
           mkdir -p "dist/${package}"
           ext=""
@@ -58,8 +59,10 @@ jobs:
             ext=".exe"
           fi
           CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
-            go build -trimpath -ldflags="-s -w" -o "dist/${package}/abs-mcp${ext}" ./cmd/abs-mcp
-          cp README.md LICENSE "dist/${package}/"
+            go build -trimpath -ldflags="-s -w -X github.com/jeeftor/abs-mcp/internal/version.Version=${server_version}" -o "dist/${package}/abs-mcp${ext}" ./cmd/abs-mcp
+          cp README.md LICENSE server.json "dist/${package}/"
+          mkdir -p "dist/${package}/docs"
+          cp docs/tools.md "dist/${package}/docs/"
           if [ "$GOOS" = "windows" ]; then
             (cd dist && zip -r "${package}.zip" "${package}")
           else
@@ -111,6 +114,44 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+
+  mcp-registry:
+    name: Publish MCP Registry Metadata
+    runs-on: ubuntu-latest
+    needs:
+      - image
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install mcp-publisher
+        run: |
+          set -euo pipefail
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Set registry metadata version
+        env:
+          VERSION: ${{ github.ref_name }}
+          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: |
+          set -euo pipefail
+          server_version="${VERSION#v}"
+          jq --arg version "$server_version" \
+            --arg image "${IMAGE_REF}:${server_version}" \
+            '.version = $version | .packages[0].version = $version | .packages[0].identifier = $image' \
+            server.json > server.tmp
+          mv server.tmp server.json
+
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server to MCP Registry
+        run: ./mcp-publisher publish
 
   github-release:
     name: Publish GitHub Release
@@ -118,6 +159,7 @@ jobs:
     needs:
       - binaries
       - image
+      - mcp-registry
     steps:
       - name: Download binary artifacts
         uses: actions/download-artifact@v8
