@@ -1,8 +1,68 @@
-# Audiobookshelf MCP Server
+<p align="center">
+  <img src="docs/assets/abs-mcp-logo.svg" width="112" alt="Audiobookshelf MCP logo">
+</p>
 
-`abs-mcp` is a Go MCP server for inspecting and safely operating an Audiobookshelf instance.
+<h1 align="center">Audiobookshelf MCP Server</h1>
 
-The current implementation exposes the first planned tool slice:
+<p align="center">
+  A Go MCP server for inspecting and safely operating Audiobookshelf libraries.
+</p>
+
+`abs-mcp` exposes safe, typed MCP tools and resources for agents that need to
+inspect Audiobookshelf libraries, diagnose scans, and optionally trigger bounded
+maintenance workflows.
+
+## Table of Contents
+
+- [Highlights](#highlights)
+- [Quick Start](#quick-start)
+- [MCP Surface](#mcp-surface)
+- [Configuration](#configuration)
+- [Safety](#safety)
+- [Installation](#installation)
+  - [Client Configs](#client-configs)
+- [Local Development](#local-development)
+- [Tests](#tests)
+- [CI and Releases](#ci-and-releases)
+- [MCP Registry](#mcp-registry)
+
+## Highlights
+
+- Read-only by default; scan and cleanup tools require `ABS_READ_ONLY=false`.
+- Runs as a local stdio MCP server from a single Go binary or Docker image.
+- Supports env vars, Docker-style env files, extra headers, and custom TLS CA
+  bundles.
+- Includes source-backed Audiobookshelf API inventory resources and repeatable
+  fixture tests.
+- Publishes release binaries and a GHCR image suitable for official MCP
+  Registry metadata.
+
+## Quick Start
+
+Run a downloaded release binary over MCP stdio:
+
+```bash
+ABS_BASE_URL=http://localhost:13378 \
+ABS_API_KEY=... \
+ABS_READ_ONLY=true \
+/path/to/abs-mcp
+```
+
+Or run the container image:
+
+```bash
+docker run --rm -i \
+  -e ABS_BASE_URL=http://host.docker.internal:13378 \
+  -e ABS_API_KEY=... \
+  -e ABS_READ_ONLY=true \
+  ghcr.io/jeeftor/abs-mcp:0.1.1
+```
+
+For client-specific snippets, see [Client Configs](#client-configs).
+
+## MCP Surface
+
+### Tools
 
 - `abs_health_check`
 - `abs_list_libraries`
@@ -20,7 +80,7 @@ The current implementation exposes the first planned tool slice:
 
 Scan tools are blocked by default because `ABS_READ_ONLY` defaults to `true`.
 
-It also exposes these MCP resources:
+### Resources
 
 - `abs://server/info`
 - `abs://libraries`
@@ -33,13 +93,14 @@ It also exposes these MCP resources:
 - `abs://api-inventory/current`
 - `abs://fixture/status`
 
-Prompts:
+### Prompts
 
 - `abs_library_audit`
 - `abs_scan_troubleshooting`
 - `abs_api_update_review`
 
-See [docs/tools.md](docs/tools.md) for tool inputs, output shapes, mutation behavior, and common errors.
+See [docs/tools.md](docs/tools.md) for tool inputs, output shapes, mutation
+behavior, and common errors.
 
 ## Configuration
 
@@ -97,7 +158,10 @@ tokens do not land in shell history or process listings.
 | `ABS_TLS_CA_CERT_FILE` | `--tls-ca-cert-file` | unset |
 | `ABS_TLS_INSECURE_SKIP_VERIFY` | `--tls-insecure-skip-verify` | `false` |
 
-`ABS_EXTRA_HEADERS_FILE` is optional. When set, it must point to a JSON object of string header names to string values, for example `{"X-Corp-Trace":"trace-1"}`. `Authorization` is rejected there; use `ABS_API_KEY` for Audiobookshelf authentication.
+`ABS_EXTRA_HEADERS_FILE` is optional. When set, it must point to a JSON object
+of string header names to string values, for example
+`{"X-Corp-Trace":"trace-1"}`. `Authorization` is rejected there; use
+`ABS_API_KEY` for Audiobookshelf authentication.
 
 `--env-file` supports simple Docker-style dotenv lines such as `KEY=value`,
 `KEY="value"`, `KEY='value'`, blank lines, comments, and optional `export`
@@ -138,23 +202,15 @@ authentication.
 
 ## Installation
 
-Download a release archive from
-`https://github.com/jeeftor/abs-mcp/releases`, unpack it, and point your MCP
-client at the `abs-mcp` binary. The server speaks MCP over stdio.
+Download a release archive from the
+[GitHub releases page](https://github.com/jeeftor/abs-mcp/releases), unpack it,
+and point your MCP client at the `abs-mcp` binary. The server speaks MCP over
+stdio.
 
-Run over MCP stdio:
+For local development, you can also run the server from source:
 
 ```bash
 go run ./cmd/abs-mcp
-```
-
-Example stdio command for a downloaded binary:
-
-```bash
-ABS_BASE_URL=http://localhost:13378 \
-ABS_API_KEY=... \
-ABS_READ_ONLY=true \
-/path/to/abs-mcp
 ```
 
 ### Client Configs
@@ -268,7 +324,7 @@ Docker-based stdio config:
 }
 ```
 
-Run the container image directly over MCP stdio:
+Run the container image directly:
 
 ```bash
 docker run --rm -i \
@@ -337,7 +393,8 @@ Run Docker-backed Audiobookshelf integration tests:
 make abs-test-integration
 ```
 
-The integration target resets and scans the repo-local ABS fixture before running tests.
+The integration target resets and scans the repo-local ABS fixture before
+running tests.
 
 Stop fixture containers when done:
 
