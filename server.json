@@ -1,0 +1,71 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jeeftor/abs-mcp",
+  "title": "Audiobookshelf MCP",
+  "description": "Inspect and safely operate Audiobookshelf libraries over MCP.",
+  "version": "0.1.1",
+  "repository": {
+    "url": "https://github.com/jeeftor/abs-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/jeeftor/abs-mcp:0.1.1",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ABS_BASE_URL",
+          "description": "Base URL of your Audiobookshelf server.",
+          "isRequired": true,
+          "format": "string",
+          "placeholder": "http://localhost:13378"
+        },
+        {
+          "name": "ABS_API_KEY",
+          "description": "Audiobookshelf API key or bearer token.",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "ABS_READ_ONLY",
+          "description": "Set to false to enable scan and cleanup tools.",
+          "format": "boolean",
+          "default": "true"
+        },
+        {
+          "name": "ABS_TIMEOUT",
+          "description": "Audiobookshelf request timeout as a Go duration or seconds.",
+          "format": "string",
+          "default": "30s"
+        },
+        {
+          "name": "ABS_FIXTURE_DIR",
+          "description": "Optional local ABS fixture directory for fixture resources.",
+          "format": "filepath",
+          "default": "test/abs"
+        },
+        {
+          "name": "ABS_EXTRA_HEADERS_FILE",
+          "description": "Optional JSON file containing extra request headers.",
+          "format": "filepath"
+        },
+        {
+          "name": "ABS_TLS_CA_CERT_FILE",
+          "description": "Optional PEM CA bundle for private or corporate ABS TLS.",
+          "format": "filepath"
+        },
+        {
+          "name": "ABS_TLS_INSECURE_SKIP_VERIFY",
+          "description": "Temporary TLS verification bypass for local troubleshooting.",
+          "format": "boolean",
+          "default": "false"
+        }
+      ]
+    }
+  ]
+}

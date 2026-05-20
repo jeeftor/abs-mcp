@@ -12,6 +12,7 @@ import (
 
 	"github.com/jeeftor/abs-mcp/internal/abs"
 	"github.com/jeeftor/abs-mcp/internal/config"
+	"github.com/jeeftor/abs-mcp/internal/version"
 )
 
 // ABSClient is the subset of the Audiobookshelf client used by MCP tools.
@@ -54,7 +55,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "abs-mcp",
 		Title:   "Audiobookshelf MCP",
-		Version: "0.1.0",
+		Version: version.Version,
 	}, nil)
 
 	mcp.AddTool(server, &mcp.Tool{
