@@ -62,6 +62,24 @@ clean up or standardize the underlying files.
 This comparison is generated from public project READMEs, registry pages, and
 this repository's current docs. It is descriptive rather than a recommendation.
 
+Mutating versus non-mutating coverage:
+
+- `jeeftor/abs-mcp` exposes read-only inspection, search, metadata-object,
+  layout-audit, resources, and prompts by default. Scan, cleanup, cover, and
+  chapter tools can mutate Audiobookshelf state only when `ABS_READ_ONLY=false`;
+  destructive operations also require exact confirmation strings.
+- `michaeldvinci/audiobookshelf-mcp` exposes a broad management surface with
+  read tools plus mutating operations such as library, collection, playlist,
+  progress, and backup actions. No public README evidence was found for a
+  global default read-only gate during this pass.
+- `sandymac/audiobookshelf-mcp` is mostly read/query oriented, with optional
+  progress and bookmark mutation tools that are disabled by default.
+- `sierikov/audiobookshelf-mcp` presents a read-only browsing, search, progress,
+  and stats surface.
+- `ForceConstant/audiobookshelf_mcp` appears to be generated from
+  Audiobookshelf OpenAPI material; mutating coverage and safety gates were not
+  determinable from the public README.
+
 | Server | Shape | Confirmed strengths | Safety posture | Difference from `jeeftor/abs-mcp` |
 | --- | --- | --- | --- | --- |
 | [`michaeldvinci/audiobookshelf-mcp`](https://github.com/michaeldvinci/audiobookshelf-mcp) | Go stdio server with release binaries. | Broad general Audiobookshelf management, including libraries, items, authors, collections, playlists, user info, sessions, podcasts, progress updates, and backups. | Exposes mutating tools; no global default read-only gate was found in the public README during this comparison pass. | Broader generic management surface, but less conservative. No public evidence was found for a misorganized-file audit, source-backed API inventory, MCP resources/prompts, cover removal/update, or chapter update tooling. |

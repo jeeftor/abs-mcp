@@ -28,6 +28,14 @@ evidence-backed, and clearly marked as AI-generated.
 7. After updating the README, report separate feature gaps or candidate work to
    the Codex user. Suggestions should be evidence-based and should not imply
    they are already planned.
+8. Include a brief operator-focused overview of mutating versus non-mutating
+   coverage. Distinguish read-only inspection/search resources from tools that
+   can change Audiobookshelf state, and call out any safety gates such as
+   read-only mode, explicit enable flags, or destructive confirmations.
+9. Convert the feature gaps into concise candidate GitHub issue titles with
+   one-sentence scopes. Ask the user whether they want issues created for all
+   candidates, a selected subset, or none. Do not create issues unless the user
+   explicitly confirms.
 
 ## Comparison Criteria
 
@@ -82,7 +90,12 @@ When using this skill, report:
 - Credible servers found and weak or placeholder hits excluded.
 - Files changed.
 - Tests or checks run.
+- Brief mutating versus non-mutating coverage overview for this server and
+  notable peers.
 - Feature gaps or candidate additions suggested for future work.
+- Candidate issue titles and scopes for the feature gaps.
+- A direct offer such as: `I found N candidate gaps. I can create GitHub issues
+  for all of them, only the ones you choose, or none.`
 
 ## Stop Conditions
 
@@ -91,3 +104,5 @@ Stop and ask before proceeding when:
 - A comparison claim depends on private credentials or a private repository.
 - A source contradicts this repository's current implementation.
 - A README update would require claiming an unimplemented feature.
+- The next action would create, edit, label, close, or otherwise mutate GitHub
+  issues and the user has not explicitly confirmed that action.
