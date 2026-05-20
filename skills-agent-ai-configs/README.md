@@ -2,6 +2,11 @@
 
 This directory stores repo-local briefs for future agents that maintain the Audiobookshelf MCP server. They are intentionally plain Markdown so they can be adapted into Codex skills, MCP prompts, or other agent configuration formats later.
 
+The actual repo-local Codex skill bundle lives under
+`skills/abs-api-source-sync/`. Install or copy that folder into
+`${CODEX_HOME:-$HOME/.codex}/skills/` when you want Codex to discover it as an
+available skill.
+
 Current briefs:
 
 - `abs-api-source-sync.md`: How an agent should detect Audiobookshelf API changes from source and update this MCP server safely.

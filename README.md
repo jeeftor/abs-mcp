@@ -212,6 +212,11 @@ These tools can mutate Audiobookshelf state and require `ABS_READ_ONLY=false`:
 string `remove issues from <libraryId>` and can check an expected issue count
 before it asks Audiobookshelf to remove missing or invalid items.
 
+Future destructive tools should follow the same pattern: `ABS_READ_ONLY=false`
+must be necessary but not sufficient, and the tool should require an explicit
+confirmation input before deleting, removing, purging, replacing, overwriting,
+or broadly batch-mutating Audiobookshelf data.
+
 The server requires an Audiobookshelf base URL and API key or bearer token.
 Prefer an Audiobookshelf API key with the least permissions needed for the
 tools you plan to expose. Bearer tokens, API keys, raw `Authorization` headers,

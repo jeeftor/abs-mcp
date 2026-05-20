@@ -115,6 +115,56 @@ These are useful but riskier, larger, or less central to MCP-first workflows.
 - Podcast download and matching operations
 - Server settings, backups, notifications, API keys, cache, and tools endpoints
 
+## Mutating Endpoint Backlog
+
+Current inventory has 115 mutating routes. All future tools mapped to these
+routes must require `ABS_READ_ONLY=false`. Destructive routes also require an
+explicit confirmation input, preferably an exact phrase containing the relevant
+ABS ID and an expected affected-record count when the server can preview it.
+
+Already exposed:
+
+- `abs_scan_library`, `abs_scan_library_and_wait`: `POST /api/libraries/:id/scan`
+- `abs_scan_item`: `POST /api/items/:id/scan`
+- `abs_remove_library_items_with_issues`: `DELETE /api/libraries/:id/issues`,
+  with exact confirmation and optional expected issue count.
+
+High-fit future candidates:
+
+- `abs_update_item_metadata`: `PATCH /api/items/:id/media`. Useful companion to
+  `abs_get_item_metadata_object`; needs a typed allowlist of editable metadata
+  fields and fixture coverage for sidecar behavior.
+- `abs_update_item_cover` / `abs_remove_item_cover`: `PATCH|POST|DELETE
+  /api/items/:id/cover`. Cover deletion is destructive and must require
+  confirmation.
+- `abs_match_item`: `POST /api/items/:id/match`. Potentially useful after
+  misorganization or metadata audits; needs source review of overwrite behavior
+  before exposure.
+- `abs_update_item_chapters` and `abs_update_item_tracks`: `POST
+  /api/items/:id/chapters`, `PATCH /api/items/:id/tracks`. Useful for repair
+  workflows, but schema and media-type behavior need source and fixture proof.
+- Collection and playlist management: `/collections*` and `/playlists*`.
+  Create/update/add/remove workflows are reasonable; delete workflows require
+  confirmation.
+- User-library progress and bookmarks: `/me/progress*` and
+  `/me/item/:id/bookmark`. Useful for personal automation, but should be
+  separated from library-admin tools and scoped to the configured ABS user.
+
+Lower-fit or admin-heavy candidates:
+
+- Library create/update/delete/order and `POST /api/libraries/:id/remove-metadata`.
+  These are admin-level operations; delete and metadata removal require strong
+  confirmation and fixture-safe tests.
+- Author, series, genre, tag, narrator, and sorting-prefix mutations. Useful for
+  catalog cleanup, but many are global or broad; rename/delete operations need
+  preview and confirmation.
+- Podcast download, match, episode update, OPML, RSS feed, and share mutations.
+  These are workflow-specific and should wait for a concrete user workflow.
+- `POST /api/tools/*`, cache purge, backups, settings, auth settings, users,
+  API keys, notifications, email settings, sessions, upload, watcher, and server
+  admin endpoints. These should stay deferred unless an explicit admin workflow
+  is requested and tested in the fixture.
+
 ## Candidate MCP Resources
 
 - `abs://server/me`

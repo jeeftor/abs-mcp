@@ -1,0 +1,4 @@
+interface:
+  display_name: "ABS API Source Sync"
+  short_description: "Sync Audiobookshelf API changes into MCP tools"
+  default_prompt: "Use $abs-api-source-sync to review Audiobookshelf API changes and propose safe MCP tool updates."
