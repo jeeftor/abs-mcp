@@ -80,6 +80,22 @@ Mutating versus non-mutating coverage:
   Audiobookshelf OpenAPI material; mutating coverage and safety gates were not
   determinable from the public README.
 
+Candidate gaps from this comparison:
+
+- [#2](https://github.com/jeeftor/abs-mcp/issues/2): Add playback progress and
+  bookmark MCP tools. Other servers expose progress/session inspection, and
+  `sandymac/audiobookshelf-mcp` exposes optional progress/bookmark mutations.
+- [#3](https://github.com/jeeftor/abs-mcp/issues/3): Add richer author, series,
+  and collection read tools. Public peers expose broader browsing in these
+  areas than this server currently documents.
+- [#4](https://github.com/jeeftor/abs-mcp/issues/4): Investigate safely gated
+  backup and server-admin MCP tools. At least one public peer exposes backup
+  creation, but any admin operation here should be source-verified,
+  fixture-tested, and gated.
+- [#5](https://github.com/jeeftor/abs-mcp/issues/5): Investigate Streamable HTTP
+  transport support. Public peers include HTTP/SSE or generated Streamable HTTP
+  variants, while this server currently focuses on stdio.
+
 | Server | Shape | Confirmed strengths | Safety posture | Difference from `jeeftor/abs-mcp` |
 | --- | --- | --- | --- | --- |
 | [`michaeldvinci/audiobookshelf-mcp`](https://github.com/michaeldvinci/audiobookshelf-mcp) | Go stdio server with release binaries. | Broad general Audiobookshelf management, including libraries, items, authors, collections, playlists, user info, sessions, podcasts, progress updates, and backups. | Exposes mutating tools; no global default read-only gate was found in the public README during this comparison pass. | Broader generic management surface, but less conservative. No public evidence was found for a misorganized-file audit, source-backed API inventory, MCP resources/prompts, cover removal/update, or chapter update tooling. |
