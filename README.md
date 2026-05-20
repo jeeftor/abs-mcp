@@ -86,6 +86,22 @@ Run over MCP stdio:
 go run ./cmd/abs-mcp
 ```
 
+Run the container image over MCP stdio:
+
+```bash
+docker run --rm -i \
+  -e ABS_BASE_URL=http://host.docker.internal:13388 \
+  -e ABS_API_KEY=... \
+  -e ABS_READ_ONLY=true \
+  ghcr.io/jeeftor/abs-mcp:latest
+```
+
+Build a local image:
+
+```bash
+make docker-build
+```
+
 ## Local Development
 
 Bring up the repo-local Audiobookshelf fixture, scan the staged test media,
@@ -133,3 +149,12 @@ Stop fixture containers when done:
 ```bash
 make abs-dev-down
 ```
+
+## CI and Releases
+
+GitHub Actions runs unit tests, Go package tests, a binary build, and a Docker
+image build on pushes and pull requests to `master`.
+
+Tags matching `v*` publish release archives for Linux, macOS, and Windows on
+amd64 and arm64. The release workflow also publishes a multi-arch Docker image
+to `ghcr.io/jeeftor/abs-mcp`.

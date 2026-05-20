@@ -1,0 +1,14 @@
+.git/
+.github/
+bin/
+.mcp*.json
+.DS_Store
+
+# Fixture runtime data is not needed to build or run the server image.
+test/abs/runtime/
+test/abs/staging-data/
+test/abs/state/
+
+# Local Python caches.
+__pycache__/
+*.py[cod]

@@ -2,8 +2,9 @@ ABS_COMPOSE = docker compose -f test/abs/docker-compose.yml
 ABS_SOURCE_REF ?= local
 UNIT_TEST_PKGS = ./...
 PYTHON ?= python3
+IMAGE ?= abs-mcp:dev
 
-.PHONY: help build dev mcp-dev-config mcp-dev-config-read-write test test-unit test-go test-scripts abs-test-integration abs-dev-seed abs-dev-init abs-dev-configure abs-dev-up abs-dev-down abs-dev-reset abs-dev-reset-all abs-dev-scan abs-dev-reset-scan abs-ci-smoke abs-dev-capture-baseline abs-dev-restore-baseline abs-dev-wait abs-dev-ps abs-dev-config abs-api-inventory abs-api-inventory-from-router abs-api-inventory-diff abs-api-inventory-check
+.PHONY: help build docker-build dev mcp-dev-config mcp-dev-config-read-write test test-unit test-go test-scripts abs-test-integration abs-dev-seed abs-dev-init abs-dev-configure abs-dev-up abs-dev-down abs-dev-reset abs-dev-reset-all abs-dev-scan abs-dev-reset-scan abs-ci-smoke abs-dev-capture-baseline abs-dev-restore-baseline abs-dev-wait abs-dev-ps abs-dev-config abs-api-inventory abs-api-inventory-from-router abs-api-inventory-diff abs-api-inventory-check
 
 help:
 	@echo "Available targets:"
@@ -18,6 +19,7 @@ help:
 	@printf "    %-26s %s\n" "test" "Run unit tests"
 	@printf "    %-26s %s\n" "test-unit" "Run unit tests"
 	@printf "    %-26s %s\n" "test-scripts" "Run Python script tests"
+	@printf "    %-26s %s\n" "docker-build" "Build local abs-mcp Docker image"
 	@printf "    %-26s %s\n" "abs-test-integration" "Run Docker-backed ABS integration tests"
 	@echo ""
 	@echo "  ABS fixture:"
@@ -42,6 +44,9 @@ help:
 build:
 	@mkdir -p bin
 	@go build -o bin/abs-mcp ./cmd/abs-mcp
+
+docker-build:
+	@docker build -t $(IMAGE) .
 
 dev: build abs-dev-reset-scan mcp-dev-config
 	@echo ""

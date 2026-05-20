@@ -23,6 +23,7 @@ other client to register custom MCP servers during tests.
   for helper scripts, and optional Docker-backed Audiobookshelf integration
   tests.
 - Local fixture: Docker Compose under `test/abs`.
+- Distribution: GitHub Actions release artifacts and GHCR Docker images.
 
 ## Configuration Contract
 
@@ -58,6 +59,37 @@ Implement `cmd/abs-mcp` as a Cobra root command that:
 
 The binary should not log bearer tokens, API keys, cookies, or raw
 `Authorization` headers.
+
+## Docker Image
+
+Provide a Dockerfile for running the stdio MCP server in a minimal container.
+
+Image requirements:
+
+- Build a static Linux `abs-mcp` binary.
+- Run as a non-root user.
+- Include CA certificates so HTTPS ABS endpoints work.
+- Include `docs/api-inventory/generated/abs-api-inventory.json` at the same
+  relative path expected by the server so `abs://api-inventory/current` works.
+- Accept the same environment variables and CLI flags as the native binary.
+- Support local corporate builds with overridable base images and an optional
+  MITRE certificate installation build argument.
+
+Example local build:
+
+```bash
+make docker-build
+```
+
+Example runtime:
+
+```bash
+docker run --rm -i \
+  -e ABS_BASE_URL=http://host.docker.internal:13388 \
+  -e ABS_API_KEY=... \
+  -e ABS_READ_ONLY=true \
+  ghcr.io/jeeftor/abs-mcp:latest
+```
 
 ## Audiobookshelf Client
 
@@ -222,6 +254,33 @@ Requirements:
 - CLI output must redact the token.
 - Tests must verify config shape and redaction.
 
+## CI and Distribution
+
+Add GitHub Actions workflows for validation and release.
+
+CI workflow requirements:
+
+- Trigger on pushes and pull requests targeting `master`.
+- Run `make test-unit`.
+- Run `go test ./...`.
+- Build the native binary with `make build`.
+- Build the Docker image without pushing it.
+
+Release workflow requirements:
+
+- Trigger on version tags matching `v*`.
+- Build native archives for:
+  - `linux/amd64`
+  - `linux/arm64`
+  - `darwin/amd64`
+  - `darwin/arm64`
+  - `windows/amd64`
+  - `windows/arm64`
+- Attach release archives to the GitHub release.
+- Build and push a multi-arch Docker image to GitHub Container Registry.
+- Tag the image with the pushed version tag and semver-derived aliases.
+- Use the repository `GITHUB_TOKEN`; do not require personal tokens.
+
 ## Safety Rules
 
 - Never log or return bearer tokens, API keys, cookies, or raw Authorization
@@ -240,6 +299,13 @@ Baseline verification:
 ```bash
 make test-unit
 go test ./...
+make build
+```
+
+Docker packaging verification:
+
+```bash
+make docker-build
 ```
 
 Docker-backed verification when fixture behavior matters:
@@ -263,6 +329,8 @@ Expected coverage:
 - Confirmation and issue-count safeguards for cleanup.
 - Fixture status redaction.
 - Python helper scripts and API inventory utilities.
+- Dockerfile builds a runnable image with the generated API inventory included.
+- GitHub Actions workflows cover CI and tag-based release distribution.
 
 ## Rebuild Order
 
@@ -274,6 +342,7 @@ Expected coverage:
 6. Add API inventory scripts, generated baseline, and script tests.
 7. Add Docker fixture scripts, compose file, baseline config, and integration
    tests.
-8. Add README and operator docs.
-9. Run `make test-unit`, `go test ./...`, and Docker integration tests when the
-   fixture is available.
+8. Add Dockerfile and GitHub Actions workflows for CI and release distribution.
+9. Add README and operator docs.
+10. Run `make test-unit`, `go test ./...`, `make docker-build`, and Docker
+    integration tests when the fixture is available.
