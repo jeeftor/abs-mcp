@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -214,6 +215,10 @@ func TestRootCommandFlagsOverrideEnvConfiguration(t *testing.T) {
 		"--read-only=false",
 		"--fixture-dir", "/tmp/flag-fixture",
 		"--extra-headers-file", headersPath,
+		"--header", "X-Corp-Trace=trace-header",
+		"--header", "X-Other=ok",
+		"--tls-ca-cert-file", "/tmp/abs-ca.pem",
+		"--tls-insecure-skip-verify",
 	})
 
 	if err := command.ExecuteContext(context.Background()); err != nil {
@@ -237,8 +242,93 @@ func TestRootCommandFlagsOverrideEnvConfiguration(t *testing.T) {
 	if got.ExtraHeadersFile != headersPath {
 		t.Fatalf("ExtraHeadersFile = %q", got.ExtraHeadersFile)
 	}
-	if got.ExtraHeaders["X-Corp-Trace"] != "trace-flags" {
+	if got.ExtraHeaders["X-Corp-Trace"] != "trace-header" {
 		t.Fatalf("X-Corp-Trace = %q", got.ExtraHeaders["X-Corp-Trace"])
+	}
+	if got.ExtraHeaders["X-Other"] != "ok" {
+		t.Fatalf("X-Other = %q", got.ExtraHeaders["X-Other"])
+	}
+	if got.TLSCACertFile != "/tmp/abs-ca.pem" {
+		t.Fatalf("TLSCACertFile = %q", got.TLSCACertFile)
+	}
+	if !got.TLSSkipVerify {
+		t.Fatal("TLSSkipVerify = false, want true")
+	}
+}
+
+func TestHTTPClientTrustsConfiguredCACertFile(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	certPath := filepath.Join(t.TempDir(), "ca.pem")
+	certPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: server.Certificate().Raw,
+	})
+	if err := os.WriteFile(certPath, certPEM, 0o600); err != nil {
+		t.Fatalf("write CA file: %v", err)
+	}
+
+	client, err := newHTTPClient(config.Config{
+		Timeout:       time.Second,
+		TLSCACertFile: certPath,
+	})
+	if err != nil {
+		t.Fatalf("newHTTPClient failed: %v", err)
+	}
+	response, err := client.Get(server.URL)
+	if err != nil {
+		t.Fatalf("GET with configured CA failed: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusNoContent)
+	}
+}
+
+func TestHTTPClientCanSkipTLSVerification(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client, err := newHTTPClient(config.Config{
+		Timeout:       time.Second,
+		TLSSkipVerify: true,
+	})
+	if err != nil {
+		t.Fatalf("newHTTPClient failed: %v", err)
+	}
+	response, err := client.Get(server.URL)
+	if err != nil {
+		t.Fatalf("GET with skip verify failed: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusNoContent)
+	}
+}
+
+func TestHTTPClientRejectsInvalidCACertFile(t *testing.T) {
+	t.Parallel()
+
+	certPath := filepath.Join(t.TempDir(), "ca.pem")
+	if err := os.WriteFile(certPath, []byte("not a certificate"), 0o600); err != nil {
+		t.Fatalf("write CA file: %v", err)
+	}
+
+	_, err := newHTTPClient(config.Config{
+		Timeout:       time.Second,
+		TLSCACertFile: certPath,
+	})
+	if err == nil {
+		t.Fatal("expected invalid CA file error")
 	}
 }
 

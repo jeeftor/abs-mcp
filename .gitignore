@@ -5,6 +5,9 @@ __pycache__/
 # Local build and MCP client config artifacts.
 bin/
 .mcp*.json
+.env
+cf-headers.json
+cloudflare-headers.json
 
 # Local OS/editor noise.
 .DS_Store

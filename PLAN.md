@@ -38,10 +38,22 @@ Explicit CLI flags exist for local debugging and override environment values.
 | `ABS_TIMEOUT` | `--timeout` | no | `30s` | ABS request timeout as Go duration or seconds. |
 | `ABS_FIXTURE_DIR` | `--fixture-dir` | no | `test/abs` | Fixture directory used by fixture status resources. |
 | `ABS_EXTRA_HEADERS_FILE` | `--extra-headers-file` | no | unset | JSON file of extra request headers. |
+| n/a | `--header NAME=VALUE` | no | unset | Repeatable local extra request header. |
+| `ABS_TLS_CA_CERT_FILE` | `--tls-ca-cert-file` | no | unset | PEM CA bundle for corporate/private TLS. |
+| `ABS_TLS_INSECURE_SKIP_VERIFY` | `--tls-insecure-skip-verify` | no | `false` | Temporary TLS verification bypass. |
 
 `ABS_EXTRA_HEADERS_FILE` must contain a JSON object from header name to string
 value. Reject `Authorization` in this file because auth must come from
 `ABS_API_KEY` or `--api-key`.
+
+Support repeatable `--header NAME=VALUE` flags for quick local runs. Merge them
+with `ABS_EXTRA_HEADERS_FILE`, with explicit header flags overriding duplicate
+file headers. Do not provide an environment variable for individual headers;
+use the header file for containerized or secret-bearing configuration.
+
+For corporate and self-signed TLS, support a CA bundle file first. The insecure
+skip-verify option exists only as an explicit temporary fallback and should
+default to false.
 
 Do not implement password login or OIDC/OAuth as a first-class MCP auth mode.
 Audiobookshelf supports OIDC for browser/mobile SSO, but API keys are the
@@ -72,6 +84,8 @@ Image requirements:
 - Include `docs/api-inventory/generated/abs-api-inventory.json` at the same
   relative path expected by the server so `abs://api-inventory/current` works.
 - Accept the same environment variables and CLI flags as the native binary.
+- Support mounting header files and CA bundles into the container, then pointing
+  `ABS_EXTRA_HEADERS_FILE` and `ABS_TLS_CA_CERT_FILE` at those mounted paths.
 - Support local corporate builds with overridable base images and an optional
   MITRE certificate installation build argument.
 
@@ -88,6 +102,19 @@ docker run --rm -i \
   -e ABS_BASE_URL=http://host.docker.internal:13388 \
   -e ABS_API_KEY=... \
   -e ABS_READ_ONLY=true \
+  ghcr.io/jeeftor/abs-mcp:latest
+```
+
+Example runtime with Cloudflare Access headers and a private CA:
+
+```bash
+docker run --rm -i \
+  -e ABS_BASE_URL=https://abs.example.com \
+  -e ABS_API_KEY=... \
+  -e ABS_EXTRA_HEADERS_FILE=/run/secrets/abs-headers.json \
+  -e ABS_TLS_CA_CERT_FILE=/run/secrets/corporate-ca.pem \
+  -v /path/to/headers.json:/run/secrets/abs-headers.json:ro \
+  -v /path/to/corporate-ca.pem:/run/secrets/corporate-ca.pem:ro \
   ghcr.io/jeeftor/abs-mcp:latest
 ```
 
@@ -320,6 +347,9 @@ Expected coverage:
 - Config loading from Cobra/Viper flags.
 - Flag-over-env precedence.
 - Extra header validation and Authorization rejection.
+- Header file and repeated `--header` merge behavior.
+- Corporate/private CA bundle trust.
+- Explicit insecure TLS skip-verify fallback.
 - ABS client URL validation, auth header behavior, error redaction, and endpoint
   request shape.
 - MCP server tool registration and JSON-RPC/protocol behavior.

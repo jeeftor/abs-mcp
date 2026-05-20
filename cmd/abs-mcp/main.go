@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -56,6 +58,9 @@ func bindFlags(flags *pflag.FlagSet, settings *viper.Viper) {
 	flags.Bool(config.KeyReadOnly, true, "Block mutating MCP tools (env ABS_READ_ONLY)")
 	flags.String(config.KeyFixtureDir, "", "ABS fixture directory used by fixture resources (env ABS_FIXTURE_DIR)")
 	flags.String(config.KeyExtraHeadersFile, "", "JSON file of extra ABS request headers (env ABS_EXTRA_HEADERS_FILE)")
+	flags.StringArray(config.KeyExtraHeader, nil, "Extra ABS request header as NAME=VALUE; repeatable and overrides duplicate file headers")
+	flags.String(config.KeyTLSCACertFile, "", "PEM CA bundle for private or corporate ABS TLS certificates (env ABS_TLS_CA_CERT_FILE)")
+	flags.Bool(config.KeyTLSSkipVerify, false, "Skip ABS TLS certificate verification; use only as a temporary fallback (env ABS_TLS_INSECURE_SKIP_VERIFY)")
 
 	mustBindFlag(settings, config.KeyBaseURL, flags)
 	mustBindFlag(settings, config.KeyAPIKey, flags)
@@ -63,6 +68,9 @@ func bindFlags(flags *pflag.FlagSet, settings *viper.Viper) {
 	mustBindFlag(settings, config.KeyReadOnly, flags)
 	mustBindFlag(settings, config.KeyFixtureDir, flags)
 	mustBindFlag(settings, config.KeyExtraHeadersFile, flags)
+	mustBindFlag(settings, config.KeyExtraHeader, flags)
+	mustBindFlag(settings, config.KeyTLSCACertFile, flags)
+	mustBindFlag(settings, config.KeyTLSSkipVerify, flags)
 }
 
 func mustBindFlag(settings *viper.Viper, key string, flags *pflag.FlagSet) {
@@ -76,11 +84,43 @@ func runServer(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return err
 	}
-	client.SetHTTPClient(&http.Client{Timeout: cfg.Timeout})
+	httpClient, err := newHTTPClient(cfg)
+	if err != nil {
+		return err
+	}
+	client.SetHTTPClient(httpClient)
 	if err := client.SetExtraHeaders(cfg.ExtraHeaders); err != nil {
 		return err
 	}
 
 	server := mcpserver.New(cfg, client).MCPServer()
 	return server.Run(ctx, &mcp.StdioTransport{})
+}
+
+func newHTTPClient(cfg config.Config) (*http.Client, error) {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if cfg.TLSCACertFile != "" || cfg.TLSSkipVerify {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: cfg.TLSSkipVerify,
+		}
+		if cfg.TLSCACertFile != "" {
+			certPool, err := x509.SystemCertPool()
+			if err != nil {
+				certPool = x509.NewCertPool()
+			}
+			data, err := os.ReadFile(cfg.TLSCACertFile)
+			if err != nil {
+				return nil, fmt.Errorf("read ABS_TLS_CA_CERT_FILE: %w", err)
+			}
+			if !certPool.AppendCertsFromPEM(data) {
+				return nil, fmt.Errorf("ABS_TLS_CA_CERT_FILE must contain at least one PEM certificate")
+			}
+			tlsConfig.RootCAs = certPool
+		}
+		transport.TLSClientConfig = tlsConfig
+	}
+	return &http.Client{
+		Timeout:   cfg.Timeout,
+		Transport: transport,
+	}, nil
 }

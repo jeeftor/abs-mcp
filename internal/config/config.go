@@ -21,6 +21,9 @@ const (
 	KeyReadOnly         = "read-only"
 	KeyFixtureDir       = "fixture-dir"
 	KeyExtraHeadersFile = "extra-headers-file"
+	KeyExtraHeader      = "header"
+	KeyTLSCACertFile    = "tls-ca-cert-file"
+	KeyTLSSkipVerify    = "tls-insecure-skip-verify"
 )
 
 // Config contains runtime settings for the MCP server.
@@ -32,6 +35,8 @@ type Config struct {
 	FixtureDir       string
 	ExtraHeadersFile string
 	ExtraHeaders     map[string]string
+	TLSCACertFile    string
+	TLSSkipVerify    bool
 }
 
 // Load reads configuration from process environment variables.
@@ -48,11 +53,15 @@ func LoadFromEnv(lookup func(string) (string, bool)) (Config, error) {
 		readOnly:             lookupString(lookup, "ABS_READ_ONLY"),
 		fixtureDir:           lookupString(lookup, "ABS_FIXTURE_DIR"),
 		extraHeadersFile:     lookupString(lookup, "ABS_EXTRA_HEADERS_FILE"),
+		extraHeaderValues:    nil,
+		tlsCACertFile:        lookupString(lookup, "ABS_TLS_CA_CERT_FILE"),
+		tlsSkipVerify:        lookupString(lookup, "ABS_TLS_INSECURE_SKIP_VERIFY"),
 		baseURLName:          "ABS_BASE_URL",
 		apiKeyName:           "ABS_API_KEY",
 		timeoutName:          "ABS_TIMEOUT",
 		readOnlyName:         "ABS_READ_ONLY",
 		extraHeadersFileName: "ABS_EXTRA_HEADERS_FILE",
+		tlsSkipVerifyName:    "ABS_TLS_INSECURE_SKIP_VERIFY",
 	})
 }
 
@@ -77,11 +86,15 @@ func LoadFromViper(settings *viper.Viper) (Config, error) {
 		readOnly:             strings.TrimSpace(settings.GetString(KeyReadOnly)),
 		fixtureDir:           strings.TrimSpace(settings.GetString(KeyFixtureDir)),
 		extraHeadersFile:     strings.TrimSpace(settings.GetString(KeyExtraHeadersFile)),
+		extraHeaderValues:    settings.GetStringSlice(KeyExtraHeader),
+		tlsCACertFile:        strings.TrimSpace(settings.GetString(KeyTLSCACertFile)),
+		tlsSkipVerify:        strings.TrimSpace(settings.GetString(KeyTLSSkipVerify)),
 		baseURLName:          "ABS_BASE_URL or --base-url",
 		apiKeyName:           "ABS_API_KEY or --api-key",
 		timeoutName:          "ABS_TIMEOUT or --timeout",
 		readOnlyName:         "ABS_READ_ONLY or --read-only",
 		extraHeadersFileName: "ABS_EXTRA_HEADERS_FILE or --extra-headers-file",
+		tlsSkipVerifyName:    "ABS_TLS_INSECURE_SKIP_VERIFY or --tls-insecure-skip-verify",
 	})
 }
 
@@ -145,11 +158,15 @@ type sourceValues struct {
 	readOnly             string
 	fixtureDir           string
 	extraHeadersFile     string
+	extraHeaderValues    []string
+	tlsCACertFile        string
+	tlsSkipVerify        string
 	baseURLName          string
 	apiKeyName           string
 	timeoutName          string
 	readOnlyName         string
 	extraHeadersFileName string
+	tlsSkipVerifyName    string
 }
 
 func load(values sourceValues) (Config, error) {
@@ -168,6 +185,10 @@ func load(values sourceValues) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	tlsSkipVerify, err := parseBool(values.tlsSkipVerify, values.tlsSkipVerifyName, false)
+	if err != nil {
+		return Config{}, err
+	}
 	fixtureDir := values.fixtureDir
 	if fixtureDir == "" {
 		fixtureDir = "test/abs"
@@ -179,6 +200,13 @@ func load(values sourceValues) (Config, error) {
 			return Config{}, err
 		}
 	}
+	for _, header := range values.extraHeaderValues {
+		name, value, err := parseExtraHeaderValue(header)
+		if err != nil {
+			return Config{}, err
+		}
+		extraHeaders[name] = value
+	}
 
 	return Config{
 		ABSBaseURL:       values.baseURL,
@@ -188,7 +216,21 @@ func load(values sourceValues) (Config, error) {
 		FixtureDir:       fixtureDir,
 		ExtraHeadersFile: values.extraHeadersFile,
 		ExtraHeaders:     extraHeaders,
+		TLSCACertFile:    values.tlsCACertFile,
+		TLSSkipVerify:    tlsSkipVerify,
 	}, nil
+}
+
+func parseExtraHeaderValue(header string) (string, string, error) {
+	name, value, ok := strings.Cut(header, "=")
+	if !ok {
+		return "", "", fmt.Errorf("--header must use NAME=VALUE")
+	}
+	canonicalName, err := normalizeExtraHeaderName(name, "--header")
+	if err != nil {
+		return "", "", err
+	}
+	return canonicalName, value, nil
 }
 
 func parseDuration(value string, key string, defaultValue time.Duration) (time.Duration, error) {

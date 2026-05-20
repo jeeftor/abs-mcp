@@ -51,6 +51,8 @@ export ABS_READ_ONLY=true
 export ABS_TIMEOUT=30s
 export ABS_FIXTURE_DIR=test/abs
 export ABS_EXTRA_HEADERS_FILE=/path/to/headers.json
+export ABS_TLS_CA_CERT_FILE=/path/to/corporate-ca.pem
+export ABS_TLS_INSECURE_SKIP_VERIFY=false
 ```
 
 The server also accepts matching Cobra/Viper CLI flags. Explicit flags override
@@ -63,7 +65,10 @@ go run ./cmd/abs-mcp \
   --read-only=true \
   --timeout 30s \
   --fixture-dir test/abs \
-  --extra-headers-file /path/to/headers.json
+  --extra-headers-file /path/to/headers.json \
+  --header 'CF-Access-Client-Id=...' \
+  --header 'CF-Access-Client-Secret=...' \
+  --tls-ca-cert-file /path/to/corporate-ca.pem
 ```
 
 Prefer `ABS_API_KEY` over `--api-key` outside short local debugging sessions so
@@ -77,8 +82,21 @@ tokens do not land in shell history or process listings.
 | `ABS_TIMEOUT` | `--timeout` | `30s` |
 | `ABS_FIXTURE_DIR` | `--fixture-dir` | `test/abs` |
 | `ABS_EXTRA_HEADERS_FILE` | `--extra-headers-file` | unset |
+| n/a | `--header NAME=VALUE` | unset |
+| `ABS_TLS_CA_CERT_FILE` | `--tls-ca-cert-file` | unset |
+| `ABS_TLS_INSECURE_SKIP_VERIFY` | `--tls-insecure-skip-verify` | `false` |
 
 `ABS_EXTRA_HEADERS_FILE` is optional. When set, it must point to a JSON object of string header names to string values, for example `{"X-Corp-Trace":"trace-1"}`. `Authorization` is rejected there; use `ABS_API_KEY` for Audiobookshelf authentication.
+
+Use `--header NAME=VALUE` for quick local header injection. It is repeatable,
+and duplicate names override values from `ABS_EXTRA_HEADERS_FILE`. Prefer the
+file for secrets such as Cloudflare Access credentials because CLI flags can
+show up in shell history and process listings.
+
+For private or corporate TLS certificates, prefer `ABS_TLS_CA_CERT_FILE` or
+`--tls-ca-cert-file` with a PEM CA bundle. Use
+`ABS_TLS_INSECURE_SKIP_VERIFY=true` or `--tls-insecure-skip-verify` only as a
+temporary fallback while fixing local trust.
 
 Run over MCP stdio:
 
@@ -93,6 +111,19 @@ docker run --rm -i \
   -e ABS_BASE_URL=http://host.docker.internal:13388 \
   -e ABS_API_KEY=... \
   -e ABS_READ_ONLY=true \
+  ghcr.io/jeeftor/abs-mcp:latest
+```
+
+With Cloudflare Access headers and a corporate/private CA bundle:
+
+```bash
+docker run --rm -i \
+  -e ABS_BASE_URL=https://abs.example.com \
+  -e ABS_API_KEY=... \
+  -e ABS_EXTRA_HEADERS_FILE=/run/secrets/abs-headers.json \
+  -e ABS_TLS_CA_CERT_FILE=/run/secrets/corporate-ca.pem \
+  -v /path/to/headers.json:/run/secrets/abs-headers.json:ro \
+  -v /path/to/corporate-ca.pem:/run/secrets/corporate-ca.pem:ro \
   ghcr.io/jeeftor/abs-mcp:latest
 ```
 
