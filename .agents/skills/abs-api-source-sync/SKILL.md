@@ -28,7 +28,10 @@ bounded, typed, agent-safe workflows.
    schema changed, or response schema changed.
 5. For endpoints mapped to MCP surface, update the typed ABS client, MCP schema,
    output shape, docs, and tests together.
-6. Run unit tests and relevant fixture round trips.
+6. If the MCP tool surface changes materially, rerun the
+   `$abs-mcp-comparison` skill so the README comparison and feature-gap
+   suggestions stay current.
+7. Run unit tests and relevant fixture round trips.
 
 ## MCP Mapping Rules
 
@@ -55,6 +58,7 @@ When using this skill, report:
 - Candidate MCP tools/resources/prompts and why they were accepted or deferred.
 - Files changed.
 - Tests run.
+- Whether `$abs-mcp-comparison` was rerun or intentionally deferred.
 - Any endpoint whose behavior remains uncertain.
 
 ## Stop Conditions

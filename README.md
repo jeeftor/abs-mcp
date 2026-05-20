@@ -16,6 +16,7 @@ maintenance workflows.
 
 - [Highlights](#highlights)
 - [Audiobook Organizer Compatibility](#audiobook-organizer-compatibility)
+- [AI Generated Comparison - Last updated 2026-05-20](#ai-generated-comparison---last-updated-2026-05-20)
 - [Quick Start](#quick-start)
 - [MCP Surface](#mcp-surface)
 - [Configuration](#configuration)
@@ -54,6 +55,24 @@ misconfigured or misplaced books without moving or deleting files. That makes it
 a good companion to Audiobook Organizer: use this MCP server to identify layout
 problems from Audiobookshelf's perspective, then use Audiobook Organizer to
 clean up or standardize the underlying files.
+
+<!-- AI-GENERATED-COMPARISON:START -->
+## AI Generated Comparison - Last updated 2026-05-20
+
+This comparison is generated from public project READMEs, registry pages, and
+this repository's current docs. It is descriptive rather than a recommendation.
+
+| Server | Shape | Confirmed strengths | Safety posture | Difference from `jeeftor/abs-mcp` |
+| --- | --- | --- | --- | --- |
+| [`michaeldvinci/audiobookshelf-mcp`](https://github.com/michaeldvinci/audiobookshelf-mcp) | Go stdio server with release binaries. | Broad general Audiobookshelf management, including libraries, items, authors, collections, playlists, user info, sessions, podcasts, progress updates, and backups. | Exposes mutating tools; no global default read-only gate was found in the public README during this comparison pass. | Broader generic management surface, but less conservative. No public evidence was found for a misorganized-file audit, source-backed API inventory, MCP resources/prompts, cover removal/update, or chapter update tooling. |
+| [`sandymac/audiobookshelf-mcp`](https://github.com/sandymac/audiobookshelf-mcp) | Rust server with stdio plus HTTP/SSE support. | Read/query surface for libraries, search, progress, stats, recent sessions, and optional progress/bookmark mutations. | Mutating tools are disabled by default and must be explicitly enabled. HTTP mode recommends bearer auth and TLS proxying. | Similar safety model, but narrower feature scope. No public evidence was found for metadata, cover, chapter repair tools, organizer-oriented audits, or fixture/API-inventory workflows. |
+| [`sierikov/audiobookshelf-mcp`](https://github.com/sierikov/audiobookshelf-mcp) | Go server with read-oriented tooling and release binaries. | Read-only browsing and search across libraries, items, progress, stats, sessions, series, authors, and collections. | Public README presents it as read-only. | Useful inspection surface, but not a controlled repair workflow. No public evidence was found for mutating metadata, cover, chapter, cleanup, or organizer-focused audit tooling. |
+| [`ForceConstant/audiobookshelf_mcp`](https://github.com/ForceConstant/audiobookshelf_mcp) | Generated OpenAPI MCP bridge with streamable HTTP and Docker-oriented files. | Broad generated API exposure from Audiobookshelf OpenAPI material. | Not determinable from the public README; generated API exposure may include mutating endpoints, but the README does not enumerate safety controls. | Less curated and less operator-specific. This project intentionally exposes bounded, typed tools with read-only gating and fixture-backed behavior checks instead of exposing every route directly. |
+
+Weak or placeholder hits, such as
+[`schmidt-software/mcp-audiobookshelf`](https://github.com/schmidt-software/mcp-audiobookshelf),
+were excluded when no implementation or feature evidence was available.
+<!-- AI-GENERATED-COMPARISON:END -->
 
 ## Quick Start
 

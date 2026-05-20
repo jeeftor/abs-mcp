@@ -55,6 +55,13 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: comparison-freshness
+        name: comparison freshness
+        entry: python3 scripts/check_comparison_freshness.py
+        language: system
+        pass_filenames: false
+        verbose: true
+
       - id: script-tests
         name: script tests
         entry: python3 -m unittest discover -s scripts -p test_*.py

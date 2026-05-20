@@ -1,0 +1,4 @@
+interface:
+  display_name: "ABS MCP Comparison"
+  short_description: "Refresh the Audiobookshelf MCP competitor comparison"
+  default_prompt: "Use $abs-mcp-comparison to refresh the README comparison against other Audiobookshelf MCP servers and suggest feature gaps."
