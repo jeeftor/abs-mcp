@@ -51,6 +51,39 @@ func TestListLibraries(t *testing.T) {
 	}
 }
 
+func TestListBackups(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.ListBackups(context.Background(), nil, EmptyInput{})
+	if err != nil {
+		t.Fatalf("ListBackups failed: %v", err)
+	}
+	if output.Count != 1 {
+		t.Fatalf("Count = %d, want 1", output.Count)
+	}
+	if output.Backups[0].ID != "backup-1" {
+		t.Fatalf("first backup ID = %q, want backup-1", output.Backups[0].ID)
+	}
+}
+
+func TestCreateBackup(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+	_, output, err := server.CreateBackup(context.Background(), nil, EmptyInput{})
+	if err != nil {
+		t.Fatalf("CreateBackup failed: %v", err)
+	}
+	if !output.Triggered || output.Backup.ID != "backup-created" {
+		t.Fatalf("unexpected create backup output: %#v", output)
+	}
+	if !client.createBackupCalled {
+		t.Fatal("expected CreateBackup to call ABS client")
+	}
+}
+
 func TestGetLibrary(t *testing.T) {
 	t.Parallel()
 
@@ -1129,6 +1162,10 @@ func TestPlannedMutatingToolsBlockedInReadOnlyMode(t *testing.T) {
 			_, _, err := server.UpdateBookmark(context.Background(), nil, BookmarkMutationInput{ItemID: "item-1", Time: 12.5, Title: "Start"})
 			return err
 		},
+		"abs_create_backup": func() error {
+			_, _, err := server.CreateBackup(context.Background(), nil, EmptyInput{})
+			return err
+		},
 		"abs_update_item_cover": func() error {
 			_, _, err := server.UpdateItemCover(context.Background(), nil, UpdateItemCoverInput{ItemID: "item-1", Cover: "/covers/alice.jpg"})
 			return err
@@ -1462,6 +1499,7 @@ type fakeABSClient struct {
 	createBookmarkPayload       abs.BookmarkPayload
 	updateBookmarkID            string
 	updateBookmarkPayload       abs.BookmarkPayload
+	createBackupCalled          bool
 	scanLibraryID               string
 	scanForce                   bool
 	scanItemID                  string
@@ -1550,6 +1588,23 @@ func newFakeABSClient() *fakeABSClient {
 			},
 		},
 	}
+}
+
+func (f *fakeABSClient) ListBackups(context.Context) ([]abs.Backup, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return []abs.Backup{
+		{ID: "backup-1", Filename: "backup-1.audiobookshelf", CreatedAt: 123, Size: 456},
+	}, nil
+}
+
+func (f *fakeABSClient) CreateBackup(context.Context) (*abs.Backup, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.createBackupCalled = true
+	return &abs.Backup{ID: "backup-created", Filename: "backup-created.audiobookshelf"}, nil
 }
 
 func (f *fakeABSClient) GetCurrentUser(context.Context) (*abs.User, error) {

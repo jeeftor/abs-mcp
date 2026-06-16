@@ -343,6 +343,24 @@ func (c *Client) UpdateBookmark(ctx context.Context, itemID string, payload Book
 	return &response, nil
 }
 
+// ListBackups returns backup records visible to the authenticated ABS user.
+func (c *Client) ListBackups(ctx context.Context) ([]Backup, error) {
+	var backups []Backup
+	if err := c.getJSON(ctx, "/api/backups", nil, &backups); err != nil {
+		return nil, err
+	}
+	return backups, nil
+}
+
+// CreateBackup asks ABS to create a server backup.
+func (c *Client) CreateBackup(ctx context.Context) (*Backup, error) {
+	var backup Backup
+	if err := c.doJSON(ctx, http.MethodPost, "/api/backups", nil, nil, &backup); err != nil {
+		return nil, err
+	}
+	return &backup, nil
+}
+
 // CreateCollection creates one ABS collection with an initial book list.
 func (c *Client) CreateCollection(ctx context.Context, payload CollectionPayload) (JSONValue, error) {
 	var response any

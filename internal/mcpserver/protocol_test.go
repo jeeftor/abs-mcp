@@ -73,6 +73,7 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 		"abs_get_items_in_progress",
 		"abs_get_item_progress",
 		"abs_list_bookmarks",
+		"abs_list_backups",
 	} {
 		if !toolNames(tools)[toolName] {
 			t.Fatalf("expected %s in tools: %#v", toolName, tools.Tools)
@@ -83,6 +84,7 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 		"abs_update_item_progress",
 		"abs_create_bookmark",
 		"abs_update_bookmark",
+		"abs_create_backup",
 		"abs_update_item_cover",
 		"abs_remove_item_cover",
 		"abs_match_item",
@@ -704,6 +706,22 @@ func TestMCPProtocolItemMutatingTools(t *testing.T) {
 	marshalStructuredOutput(t, updateBookmarkResult.StructuredContent, &updateBookmarkOutput)
 	if !updateBookmarkOutput.Triggered || updateBookmarkOutput.Bookmark.Title != "Updated" {
 		t.Fatalf("unexpected update bookmark output: %#v", updateBookmarkOutput)
+	}
+
+	createBackupResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_create_backup",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("call abs_create_backup: %v", err)
+	}
+	if createBackupResult.IsError {
+		t.Fatalf("abs_create_backup returned tool error: %s", contentText(createBackupResult.Content))
+	}
+	var createBackupOutput BackupMutationOutput
+	marshalStructuredOutput(t, createBackupResult.StructuredContent, &createBackupOutput)
+	if !createBackupOutput.Triggered || createBackupOutput.Backup.ID != "backup-created" {
+		t.Fatalf("unexpected create backup output: %#v", createBackupOutput)
 	}
 
 	createCollectionResult, err := session.CallTool(ctx, &mcp.CallToolParams{
