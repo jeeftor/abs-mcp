@@ -108,6 +108,11 @@ These are read-heavy, broadly useful, and fixture-testable.
   - Purpose: inspect bookmarks for the configured ABS user without exposing the full user payload.
   - Mutates: no.
 
+- `abs_list_backups`
+  - API basis: `GET /api/backups`.
+  - Purpose: inspect server backup records visible to the configured ABS token.
+  - Mutates: no.
+
 - `abs_scan_item`
   - API basis: `POST /api/items/:id/scan`.
   - Purpose: rescan a single item after targeted changes.
@@ -160,6 +165,8 @@ Already exposed:
   scoped to the configured ABS user.
 - `abs_create_bookmark`, `abs_update_bookmark`: `POST|PATCH
   /api/me/item/:id/bookmark`, scoped to the configured ABS user.
+- `abs_create_backup`: `POST /api/backups`, blocked by read-only mode and
+  limited to backup creation only.
 
 High-fit future candidates:
 
@@ -191,10 +198,14 @@ Lower-fit or admin-heavy candidates:
   preview and confirmation.
 - Podcast download, match, episode update, OPML, RSS feed, and share mutations.
   These are workflow-specific and should wait for a concrete user workflow.
-- `POST /api/tools/*`, cache purge, backups, settings, auth settings, users,
-  API keys, notifications, email settings, sessions, upload, watcher, and server
-  admin endpoints. These should stay deferred unless an explicit admin workflow
-  is requested and tested in the fixture.
+- Backup restore/apply, delete, upload, download, and backup-path changes.
+  These are destructive, file-transfer oriented, or broad server configuration
+  workflows and should stay deferred until a concrete operator workflow is
+  requested and fixture-tested.
+- `POST /api/tools/*`, cache purge, settings, auth settings, users, API keys,
+  notifications, email settings, sessions, upload, watcher, and server admin
+  endpoints. These should stay deferred unless an explicit admin workflow is
+  requested and tested in the fixture.
 
 ## Candidate MCP Resources
 

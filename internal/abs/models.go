@@ -109,6 +109,16 @@ type BookmarkPayload struct {
 	Title string  `json:"title"`
 }
 
+// Backup is one Audiobookshelf backup record.
+type Backup struct {
+	ID        string `json:"id"`
+	Filename  string `json:"filename,omitempty"`
+	Path      string `json:"path,omitempty"`
+	Size      int64  `json:"size,omitempty"`
+	CreatedAt int64  `json:"createdAt,omitempty"`
+	UpdatedAt int64  `json:"updatedAt,omitempty"`
+}
+
 // ItemMetadataPayload is the source-verified body for item metadata updates.
 type ItemMetadataPayload struct {
 	Metadata *ItemMetadataFields `json:"metadata,omitempty"`

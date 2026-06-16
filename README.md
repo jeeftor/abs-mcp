@@ -154,6 +154,7 @@ Read-only tools:
 - `abs_get_items_in_progress`
 - `abs_get_item_progress`
 - `abs_list_bookmarks`
+- `abs_list_backups`
 - `abs_get_item_metadata_object`
 - `abs_find_misorganized_items`
 
@@ -166,6 +167,7 @@ Implemented mutating tools:
 - `abs_update_item_progress`
 - `abs_create_bookmark`
 - `abs_update_bookmark`
+- `abs_create_backup`
 - `abs_update_item_cover`
 - `abs_remove_item_cover`
 - `abs_update_item_chapters`
@@ -331,6 +333,7 @@ These tools can mutate Audiobookshelf state and require `ABS_READ_ONLY=false`:
 - `abs_update_item_progress`
 - `abs_create_bookmark`
 - `abs_update_bookmark`
+- `abs_create_backup`
 - `abs_match_item` (planned; not implemented)
 - `abs_update_item_tracks` (planned; not implemented)
 - `abs_create_collection`

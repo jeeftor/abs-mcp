@@ -205,6 +205,61 @@ func TestClientGetLibraryItemsWithOptionsAddsFilterQuery(t *testing.T) {
 	}
 }
 
+func TestClientListBackups(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/backups" {
+			t.Fatalf("path = %s, want /api/backups", request.URL.Path)
+		}
+		writeJSON(t, writer, []Backup{
+			{ID: "backup-1", Filename: "backup-1.audiobookshelf", CreatedAt: 123, Size: 456},
+		})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	backups, err := client.ListBackups(context.Background())
+	if err != nil {
+		t.Fatalf("ListBackups failed: %v", err)
+	}
+	if len(backups) != 1 || backups[0].ID != "backup-1" {
+		t.Fatalf("backups = %#v", backups)
+	}
+}
+
+func TestClientCreateBackup(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/backups" {
+			t.Fatalf("path = %s, want /api/backups", request.URL.Path)
+		}
+		if request.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", request.Method)
+		}
+		writeJSON(t, writer, Backup{ID: "backup-2", Filename: "backup-2.audiobookshelf"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	backup, err := client.CreateBackup(context.Background())
+	if err != nil {
+		t.Fatalf("CreateBackup failed: %v", err)
+	}
+	if backup.ID != "backup-2" {
+		t.Fatalf("backup = %#v", backup)
+	}
+}
+
 func TestClientGetAllLibraryItemsPaginates(t *testing.T) {
 	t.Parallel()
 

@@ -436,6 +436,22 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		}
 	}
 
+	backupsResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_list_backups",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("call abs_list_backups: %v", err)
+	}
+	if backupsResult.IsError {
+		t.Fatalf("abs_list_backups returned tool error: %#v", backupsResult.Content)
+	}
+	var backups mcpserver.BackupsOutput
+	unmarshalStructuredOutput(t, backupsResult.StructuredContent, &backups)
+	if backups.Count != len(backups.Backups) {
+		t.Fatalf("backup count mismatch: %#v", backups)
+	}
+
 	authorsResult, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "abs_list_library_authors",
 		Arguments: map[string]any{
@@ -598,6 +614,20 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 	}
 	if !removeIssuesReadOnlyResult.IsError {
 		t.Fatal("expected remove-issues tool to be blocked by read-only mode")
+	}
+
+	createBackupReadOnlyResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_create_backup",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("call read-only abs_create_backup: %v", err)
+	}
+	if !createBackupReadOnlyResult.IsError {
+		t.Fatal("expected abs_create_backup to be blocked by read-only mode")
+	}
+	if !strings.Contains(contentText(createBackupReadOnlyResult.Content), "ABS_READ_ONLY=true") {
+		t.Fatalf("expected read-only create backup error, got %#v", createBackupReadOnlyResult.Content)
 	}
 
 	resourceResult, err := session.ReadResource(ctx, &mcp.ReadResourceParams{URI: "abs://libraries"})
@@ -847,6 +877,22 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 	unmarshalStructuredOutput(t, updateBookmarkResult.StructuredContent, &updatedBookmark)
 	if !updatedBookmark.Triggered || updatedBookmark.Bookmark.Title != "abs-mcp fixture bookmark updated" {
 		t.Fatalf("unexpected update bookmark output: %#v", updatedBookmark)
+	}
+
+	createBackupResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_create_backup",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("call mutating abs_create_backup: %v", err)
+	}
+	if createBackupResult.IsError {
+		t.Fatalf("abs_create_backup returned tool error: %#v", createBackupResult.Content)
+	}
+	var createdBackup mcpserver.BackupMutationOutput
+	unmarshalStructuredOutput(t, createBackupResult.StructuredContent, &createdBackup)
+	if !createdBackup.Triggered || createdBackup.Backup.ID == "" {
+		t.Fatalf("unexpected create backup output: %#v", createdBackup)
 	}
 
 	collectionName := "abs-mcp-fixture-" + catalogSuffix
@@ -1337,6 +1383,16 @@ func unmarshalResourceContent(t *testing.T, result *mcp.ReadResourceResult, targ
 	if err := json.Unmarshal([]byte(result.Contents[0].Text), target); err != nil {
 		t.Fatalf("unmarshal resource content: %v\n%s", err, result.Contents[0].Text)
 	}
+}
+
+func contentText(contents []mcp.Content) string {
+	parts := make([]string, 0, len(contents))
+	for _, content := range contents {
+		if text, ok := content.(*mcp.TextContent); ok {
+			parts = append(parts, text.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }
 
 func containsPrompt(result *mcp.ListPromptsResult, name string) bool {

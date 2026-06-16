@@ -40,6 +40,8 @@ type ABSClient interface {
 	UpdateItemProgress(context.Context, string, string, abs.ProgressUpdatePayload) error
 	CreateBookmark(context.Context, string, abs.BookmarkPayload) (*abs.Bookmark, error)
 	UpdateBookmark(context.Context, string, abs.BookmarkPayload) (*abs.Bookmark, error)
+	ListBackups(context.Context) ([]abs.Backup, error)
+	CreateBackup(context.Context) (*abs.Backup, error)
 	GetItemMetadataObject(context.Context, string) (abs.JSONValue, error)
 	UpdateItemMetadata(context.Context, string, abs.ItemMetadataPayload) (abs.JSONValue, error)
 	ScanLibrary(context.Context, string, bool) error
@@ -181,6 +183,16 @@ func (s *Server) MCPServer() *mcp.Server {
 		Title:       "Update Audiobookshelf current-user bookmark",
 		Description: "Update one bookmark for the configured Audiobookshelf user. Blocked when ABS_READ_ONLY is true.",
 	}, s.UpdateBookmark)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_list_backups",
+		Title:       "List Audiobookshelf backups",
+		Description: "List source-backed Audiobookshelf server backup records visible to the authenticated user.",
+	}, s.ListBackups)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_create_backup",
+		Title:       "Create Audiobookshelf backup",
+		Description: "Create one Audiobookshelf server backup. Blocked when ABS_READ_ONLY is true.",
+	}, s.CreateBackup)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_get_item_metadata_object",
 		Title:       "Get Audiobookshelf item metadata object",
@@ -527,6 +539,18 @@ type BookmarkMutationOutput struct {
 	Triggered bool         `json:"triggered" jsonschema:"Whether an Audiobookshelf bookmark request was sent."`
 	ItemID    string       `json:"itemId" jsonschema:"Audiobookshelf library item ID requested."`
 	Bookmark  abs.Bookmark `json:"bookmark" jsonschema:"Audiobookshelf bookmark returned by ABS."`
+}
+
+// BackupsOutput is returned by abs_list_backups.
+type BackupsOutput struct {
+	Backups []abs.Backup `json:"backups" jsonschema:"Audiobookshelf backup records."`
+	Count   int          `json:"count" jsonschema:"Number of backups returned."`
+}
+
+// BackupMutationOutput is returned by backup mutation tools.
+type BackupMutationOutput struct {
+	Triggered bool       `json:"triggered" jsonschema:"Whether an Audiobookshelf backup request was sent."`
+	Backup    abs.Backup `json:"backup" jsonschema:"Audiobookshelf backup returned by ABS."`
 }
 
 // MetadataObjectOutput is returned by abs_get_item_metadata_object.
@@ -1240,6 +1264,35 @@ func (s *Server) UpdateBookmark(
 		return nil, BookmarkMutationOutput{}, fmt.Errorf("update ABS current-user bookmark for item %q: %w", itemID, err)
 	}
 	return nil, BookmarkMutationOutput{Triggered: true, ItemID: itemID, Bookmark: *bookmark}, nil
+}
+
+// ListBackups returns Audiobookshelf server backups.
+func (s *Server) ListBackups(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	_ EmptyInput,
+) (*mcp.CallToolResult, BackupsOutput, error) {
+	backups, err := s.client.ListBackups(ctx)
+	if err != nil {
+		return nil, BackupsOutput{}, fmt.Errorf("list ABS backups: %w", err)
+	}
+	return nil, BackupsOutput{Backups: backups, Count: len(backups)}, nil
+}
+
+// CreateBackup creates one Audiobookshelf server backup.
+func (s *Server) CreateBackup(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	_ EmptyInput,
+) (*mcp.CallToolResult, BackupMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_create_backup"); err != nil {
+		return nil, BackupMutationOutput{}, err
+	}
+	backup, err := s.client.CreateBackup(ctx)
+	if err != nil {
+		return nil, BackupMutationOutput{}, fmt.Errorf("create ABS backup: %w", err)
+	}
+	return nil, BackupMutationOutput{Triggered: true, Backup: *backup}, nil
 }
 
 // GetItemMetadataObject returns the raw ABS metadata object for one item.
