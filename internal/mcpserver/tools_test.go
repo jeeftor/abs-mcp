@@ -283,6 +283,250 @@ func TestGetLibraryFilterData(t *testing.T) {
 	}
 }
 
+func TestListLibraryAuthors(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.ListLibraryAuthors(context.Background(), nil, CatalogListInput{
+		LibraryID: "lib-audio",
+		Limit:     1000,
+		Offset:    100,
+		Sort:      "name",
+		Desc:      true,
+		Filter:    "authors.name.Lewis",
+		Include:   []string{"Items", " series "},
+		Minified:  true,
+	})
+	if err != nil {
+		t.Fatalf("ListLibraryAuthors failed: %v", err)
+	}
+	if output.LibraryID != "lib-audio" || output.Limit != 100 || output.Offset != 100 || output.Page != 1 {
+		t.Fatalf("unexpected authors output: %#v", output)
+	}
+	if client.lastCatalogListOptions.Limit != 100 || client.lastCatalogListOptions.Page != 1 {
+		t.Fatalf("unexpected catalog options: %#v", client.lastCatalogListOptions)
+	}
+	if strings.Join(client.lastCatalogListOptions.Include, ",") != "items,series" {
+		t.Fatalf("Include = %#v, want items,series", client.lastCatalogListOptions.Include)
+	}
+	if output.Data == nil {
+		t.Fatal("expected author list data")
+	}
+}
+
+func TestGetAuthor(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.GetAuthor(context.Background(), nil, EntityInput{
+		ID:      "author-1",
+		Include: []string{"items", "series"},
+	})
+	if err != nil {
+		t.Fatalf("GetAuthor failed: %v", err)
+	}
+	if output.ID != "author-1" || output.Data == nil {
+		t.Fatalf("unexpected author output: %#v", output)
+	}
+	if client.lastInclude[0] != "items" || client.lastInclude[1] != "series" {
+		t.Fatalf("lastInclude = %#v, want items,series", client.lastInclude)
+	}
+}
+
+func TestListLibrarySeries(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.ListLibrarySeries(context.Background(), nil, CatalogListInput{
+		LibraryID: "lib-audio",
+		Limit:     25,
+		Offset:    50,
+		Sort:      "name",
+		Desc:      true,
+		Filter:    "series.name.Alice",
+		Include:   []string{"progress", "rssfeed"},
+		Minified:  true,
+	})
+	if err != nil {
+		t.Fatalf("ListLibrarySeries failed: %v", err)
+	}
+	if output.LibraryID != "lib-audio" || output.Limit != 25 || output.Offset != 50 || output.Page != 2 {
+		t.Fatalf("unexpected series output: %#v", output)
+	}
+	if client.lastCatalogListOptions.Page != 2 || client.lastCatalogListOptions.Filter != "series.name.Alice" {
+		t.Fatalf("unexpected catalog options: %#v", client.lastCatalogListOptions)
+	}
+	if output.Data == nil {
+		t.Fatal("expected series list data")
+	}
+}
+
+func TestGetSeries(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.GetSeries(context.Background(), nil, EntityInput{
+		ID:      "series-1",
+		Include: []string{"progress", "rssfeed"},
+	})
+	if err != nil {
+		t.Fatalf("GetSeries failed: %v", err)
+	}
+	if output.ID != "series-1" || output.Data == nil {
+		t.Fatalf("unexpected series output: %#v", output)
+	}
+}
+
+func TestListCollections(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.ListCollections(context.Background(), nil, EmptyInput{})
+	if err != nil {
+		t.Fatalf("ListCollections failed: %v", err)
+	}
+	if output.Data == nil {
+		t.Fatal("expected collections data")
+	}
+}
+
+func TestGetCollection(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.GetCollection(context.Background(), nil, EntityInput{
+		ID:      "col-1",
+		Include: []string{"items"},
+	})
+	if err != nil {
+		t.Fatalf("GetCollection failed: %v", err)
+	}
+	if output.ID != "col-1" || output.Data == nil {
+		t.Fatalf("unexpected collection output: %#v", output)
+	}
+}
+
+func TestGetItemsInProgress(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.GetItemsInProgress(context.Background(), nil, ItemsInProgressInput{Limit: 1000})
+	if err != nil {
+		t.Fatalf("GetItemsInProgress failed: %v", err)
+	}
+	if output.Limit != 100 {
+		t.Fatalf("Limit = %d, want 100", output.Limit)
+	}
+	if output.User.Scope != "currentUser" {
+		t.Fatalf("User.Scope = %q, want currentUser", output.User.Scope)
+	}
+	if client.itemsInProgressLimit != 100 {
+		t.Fatalf("itemsInProgressLimit = %d, want 100", client.itemsInProgressLimit)
+	}
+	if output.Data == nil {
+		t.Fatal("expected items-in-progress data")
+	}
+}
+
+func TestGetItemProgress(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.GetItemProgress(context.Background(), nil, ItemProgressInput{
+		ItemID:    "item-1",
+		EpisodeID: "episode-1",
+	})
+	if err != nil {
+		t.Fatalf("GetItemProgress failed: %v", err)
+	}
+	if output.ItemID != "item-1" || output.EpisodeID != "episode-1" {
+		t.Fatalf("unexpected progress output IDs: %#v", output)
+	}
+	if output.User.Scope != "currentUser" || output.User.UserID != "user-1" {
+		t.Fatalf("unexpected progress user scope: %#v", output.User)
+	}
+	if output.Progress.ID != "progress-1" || output.Progress.CurrentTime != 42 {
+		t.Fatalf("unexpected progress: %#v", output.Progress)
+	}
+}
+
+func TestListBookmarks(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.ListBookmarks(context.Background(), nil, BookmarksInput{ItemID: "item-1"})
+	if err != nil {
+		t.Fatalf("ListBookmarks failed: %v", err)
+	}
+	if output.Count != 1 {
+		t.Fatalf("Count = %d, want 1", output.Count)
+	}
+	if output.Bookmarks[0].LibraryItemID != "item-1" || output.Bookmarks[0].Title != "Start" {
+		t.Fatalf("unexpected bookmark: %#v", output.Bookmarks[0])
+	}
+}
+
+func TestProgressAndBookmarkMutations(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+	currentTime := 42.5
+	progress := 0.5
+
+	_, progressOutput, err := server.UpdateItemProgress(context.Background(), nil, UpdateItemProgressInput{
+		ItemID:      "item-1",
+		EpisodeID:   "episode-1",
+		CurrentTime: &currentTime,
+		Progress:    &progress,
+	})
+	if err != nil {
+		t.Fatalf("UpdateItemProgress failed: %v", err)
+	}
+	if !progressOutput.Triggered || progressOutput.ItemID != "item-1" || progressOutput.EpisodeID != "episode-1" {
+		t.Fatalf("unexpected progress output: %#v", progressOutput)
+	}
+	if client.updateItemProgressID != "item-1" || client.updateItemProgressEpisodeID != "episode-1" {
+		t.Fatalf("unexpected progress call: %q/%q", client.updateItemProgressID, client.updateItemProgressEpisodeID)
+	}
+	if client.updateItemProgressPayload.CurrentTime == nil || *client.updateItemProgressPayload.CurrentTime != currentTime {
+		t.Fatalf("unexpected progress payload: %#v", client.updateItemProgressPayload)
+	}
+
+	_, created, err := server.CreateBookmark(context.Background(), nil, BookmarkMutationInput{
+		ItemID: "item-1",
+		Time:   12.5,
+		Title:  "Start",
+	})
+	if err != nil {
+		t.Fatalf("CreateBookmark failed: %v", err)
+	}
+	if !created.Triggered || created.Bookmark.Title != "Start" {
+		t.Fatalf("unexpected create bookmark output: %#v", created)
+	}
+
+	_, updated, err := server.UpdateBookmark(context.Background(), nil, BookmarkMutationInput{
+		ItemID: "item-1",
+		Time:   12.5,
+		Title:  "Updated",
+	})
+	if err != nil {
+		t.Fatalf("UpdateBookmark failed: %v", err)
+	}
+	if !updated.Triggered || updated.Bookmark.Title != "Updated" {
+		t.Fatalf("unexpected update bookmark output: %#v", updated)
+	}
+	if client.updateBookmarkPayload.Title != "Updated" {
+		t.Fatalf("unexpected bookmark payload: %#v", client.updateBookmarkPayload)
+	}
+}
+
 func TestGetItemMetadataObject(t *testing.T) {
 	t.Parallel()
 
@@ -428,6 +672,27 @@ func TestRawToolsRequireIDs(t *testing.T) {
 	}
 	if _, _, err := server.GetItemMetadataObject(context.Background(), nil, LibraryItemInput{}); err == nil {
 		t.Fatal("expected metadata-object missing itemId error")
+	}
+	if _, _, err := server.ListLibraryAuthors(context.Background(), nil, CatalogListInput{}); err == nil {
+		t.Fatal("expected authors missing libraryId error")
+	}
+	if _, _, err := server.ListLibrarySeries(context.Background(), nil, CatalogListInput{LibraryID: "lib-audio", Limit: 2, Offset: 1}); err == nil {
+		t.Fatal("expected series unaligned offset error")
+	}
+	if _, _, err := server.GetAuthor(context.Background(), nil, EntityInput{}); err == nil {
+		t.Fatal("expected missing author ID error")
+	}
+	if _, _, err := server.GetSeries(context.Background(), nil, EntityInput{}); err == nil {
+		t.Fatal("expected missing series ID error")
+	}
+	if _, _, err := server.GetCollection(context.Background(), nil, EntityInput{}); err == nil {
+		t.Fatal("expected missing collection ID error")
+	}
+	if _, _, err := server.GetItemsInProgress(context.Background(), nil, ItemsInProgressInput{Limit: -1}); err == nil {
+		t.Fatal("expected negative progress limit error")
+	}
+	if _, _, err := server.GetItemProgress(context.Background(), nil, ItemProgressInput{}); err == nil {
+		t.Fatal("expected missing item progress ID error")
 	}
 }
 
@@ -687,13 +952,181 @@ func TestUpdateItemChapters(t *testing.T) {
 	}
 }
 
+func TestUpdateItemMetadata(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+	title := "Alice Updated"
+	description := "Clean description"
+	explicit := true
+
+	_, output, err := server.UpdateItemMetadata(context.Background(), nil, UpdateItemMetadataInput{
+		ItemID:      "item-1",
+		Title:       &title,
+		Description: &description,
+		Explicit:    &explicit,
+		Genres:      []string{"fiction", "classic"},
+		Authors:     []string{"Lewis Carroll"},
+		Series:      []SeriesMetadataInput{{Name: "Alice Books", Sequence: "1"}},
+		Tags:        []string{"favorite"},
+	})
+	if err != nil {
+		t.Fatalf("UpdateItemMetadata failed: %v", err)
+	}
+	if !output.Triggered || output.ItemID != "item-1" || output.Data == nil {
+		t.Fatalf("unexpected metadata update output: %#v", output)
+	}
+	if client.updateItemMetadataID != "item-1" {
+		t.Fatalf("updateItemMetadataID = %q, want item-1", client.updateItemMetadataID)
+	}
+	payload := client.updateItemMetadataPayload
+	if payload.Metadata == nil || payload.Metadata.Title == nil || *payload.Metadata.Title != title {
+		t.Fatalf("unexpected title payload: %#v", payload)
+	}
+	if payload.Metadata.Description == nil || *payload.Metadata.Description != description {
+		t.Fatalf("unexpected description payload: %#v", payload)
+	}
+	if payload.Metadata.Explicit == nil || !*payload.Metadata.Explicit {
+		t.Fatalf("unexpected explicit payload: %#v", payload)
+	}
+	if payload.Metadata.Authors == nil || len(*payload.Metadata.Authors) != 1 || (*payload.Metadata.Authors)[0].Name != "Lewis Carroll" {
+		t.Fatalf("unexpected authors payload: %#v", payload)
+	}
+	if payload.Metadata.Series == nil || len(*payload.Metadata.Series) != 1 || (*payload.Metadata.Series)[0].Name != "Alice Books" {
+		t.Fatalf("unexpected series payload: %#v", payload)
+	}
+	if payload.Tags == nil || len(*payload.Tags) != 1 || (*payload.Tags)[0] != "favorite" {
+		t.Fatalf("unexpected tags payload: %#v", payload)
+	}
+}
+
+func TestCollectionMutations(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+
+	_, created, err := server.CreateCollection(context.Background(), nil, CollectionInput{
+		LibraryID:   "lib-audio",
+		Name:        "Favorites",
+		Description: "Good books",
+		ItemIDs:     []string{"item-1"},
+	})
+	if err != nil {
+		t.Fatalf("CreateCollection failed: %v", err)
+	}
+	if !created.Triggered || created.ID != "col-1" || created.Data == nil {
+		t.Fatalf("unexpected create collection output: %#v", created)
+	}
+	if client.createCollectionPayload.Name != "Favorites" || client.createCollectionPayload.LibraryID != "lib-audio" {
+		t.Fatalf("unexpected create collection payload: %#v", client.createCollectionPayload)
+	}
+
+	_, updated, err := server.UpdateCollection(context.Background(), nil, CollectionInput{
+		CollectionID: "col-1",
+		Name:         "Updated",
+		Description:  "New description",
+	})
+	if err != nil {
+		t.Fatalf("UpdateCollection failed: %v", err)
+	}
+	if !updated.Triggered || updated.ID != "col-1" {
+		t.Fatalf("unexpected update collection output: %#v", updated)
+	}
+	if client.updateCollectionID != "col-1" || client.updateCollectionPayload.Name != "Updated" {
+		t.Fatalf("unexpected update collection call: %q %#v", client.updateCollectionID, client.updateCollectionPayload)
+	}
+
+	_, added, err := server.AddCollectionItem(context.Background(), nil, CollectionItemInput{
+		CollectionID: "col-1",
+		ItemID:       "item-1",
+	})
+	if err != nil {
+		t.Fatalf("AddCollectionItem failed: %v", err)
+	}
+	if !added.Triggered || added.ID != "col-1" {
+		t.Fatalf("unexpected add collection output: %#v", added)
+	}
+	if client.addCollectionID != "col-1" || client.addCollectionItemID != "item-1" {
+		t.Fatalf("unexpected add collection call: %q/%q", client.addCollectionID, client.addCollectionItemID)
+	}
+}
+
+func TestPlaylistMutations(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+
+	_, created, err := server.CreatePlaylist(context.Background(), nil, PlaylistInput{
+		LibraryID:   "lib-audio",
+		Name:        "Queue",
+		Description: "Listen next",
+		Items:       []PlaylistCreateItemInput{{ItemID: "item-1", EpisodeID: "episode-1"}},
+	})
+	if err != nil {
+		t.Fatalf("CreatePlaylist failed: %v", err)
+	}
+	if !created.Triggered || created.ID != "pl-1" || created.Data == nil {
+		t.Fatalf("unexpected create playlist output: %#v", created)
+	}
+	if client.createPlaylistPayload.Name != "Queue" || client.createPlaylistPayload.Items[0].LibraryItemID != "item-1" {
+		t.Fatalf("unexpected create playlist payload: %#v", client.createPlaylistPayload)
+	}
+
+	_, updated, err := server.UpdatePlaylist(context.Background(), nil, PlaylistInput{
+		PlaylistID:  "pl-1",
+		Name:        "Updated",
+		Description: "New description",
+	})
+	if err != nil {
+		t.Fatalf("UpdatePlaylist failed: %v", err)
+	}
+	if !updated.Triggered || updated.ID != "pl-1" {
+		t.Fatalf("unexpected update playlist output: %#v", updated)
+	}
+	if client.updatePlaylistID != "pl-1" || client.updatePlaylistPayload.Name != "Updated" {
+		t.Fatalf("unexpected update playlist call: %q %#v", client.updatePlaylistID, client.updatePlaylistPayload)
+	}
+
+	_, added, err := server.AddPlaylistItem(context.Background(), nil, PlaylistItemInput{
+		PlaylistID: "pl-1",
+		ItemID:     "item-1",
+		EpisodeID:  "episode-1",
+	})
+	if err != nil {
+		t.Fatalf("AddPlaylistItem failed: %v", err)
+	}
+	if !added.Triggered || added.ID != "pl-1" {
+		t.Fatalf("unexpected add playlist output: %#v", added)
+	}
+	if client.addPlaylistID != "pl-1" || client.addPlaylistItem.LibraryItemID != "item-1" || client.addPlaylistItem.EpisodeID != "episode-1" {
+		t.Fatalf("unexpected add playlist call: %q %#v", client.addPlaylistID, client.addPlaylistItem)
+	}
+}
+
 func TestPlannedMutatingToolsBlockedInReadOnlyMode(t *testing.T) {
 	t.Parallel()
 
 	server := newTestServer()
+	metadataTitle := "Alice Updated"
 	tests := map[string]func() error{
 		"abs_update_item_metadata": func() error {
-			_, _, err := server.UpdateItemMetadata(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
+			_, _, err := server.UpdateItemMetadata(context.Background(), nil, UpdateItemMetadataInput{ItemID: "item-1", Title: &metadataTitle})
+			return err
+		},
+		"abs_update_item_progress": func() error {
+			currentTime := 42.5
+			_, _, err := server.UpdateItemProgress(context.Background(), nil, UpdateItemProgressInput{ItemID: "item-1", CurrentTime: &currentTime})
+			return err
+		},
+		"abs_create_bookmark": func() error {
+			_, _, err := server.CreateBookmark(context.Background(), nil, BookmarkMutationInput{ItemID: "item-1", Time: 12.5, Title: "Start"})
+			return err
+		},
+		"abs_update_bookmark": func() error {
+			_, _, err := server.UpdateBookmark(context.Background(), nil, BookmarkMutationInput{ItemID: "item-1", Time: 12.5, Title: "Start"})
 			return err
 		},
 		"abs_update_item_cover": func() error {
@@ -721,11 +1154,11 @@ func TestPlannedMutatingToolsBlockedInReadOnlyMode(t *testing.T) {
 			return err
 		},
 		"abs_create_collection": func() error {
-			_, _, err := server.CreateCollection(context.Background(), nil, CollectionInput{Name: "Favorites"})
+			_, _, err := server.CreateCollection(context.Background(), nil, CollectionInput{LibraryID: "lib-audio", Name: "Favorites", ItemIDs: []string{"item-1"}})
 			return err
 		},
 		"abs_update_collection": func() error {
-			_, _, err := server.UpdateCollection(context.Background(), nil, CollectionInput{CollectionID: "col-1"})
+			_, _, err := server.UpdateCollection(context.Background(), nil, CollectionInput{CollectionID: "col-1", Name: "Updated"})
 			return err
 		},
 		"abs_delete_collection": func() error {
@@ -741,11 +1174,11 @@ func TestPlannedMutatingToolsBlockedInReadOnlyMode(t *testing.T) {
 			return err
 		},
 		"abs_create_playlist": func() error {
-			_, _, err := server.CreatePlaylist(context.Background(), nil, PlaylistInput{Name: "Queue"})
+			_, _, err := server.CreatePlaylist(context.Background(), nil, PlaylistInput{LibraryID: "lib-audio", Name: "Queue"})
 			return err
 		},
 		"abs_update_playlist": func() error {
-			_, _, err := server.UpdatePlaylist(context.Background(), nil, PlaylistInput{PlaylistID: "pl-1"})
+			_, _, err := server.UpdatePlaylist(context.Background(), nil, PlaylistInput{PlaylistID: "pl-1", Name: "Updated"})
 			return err
 		},
 		"abs_delete_playlist": func() error {
@@ -777,8 +1210,27 @@ func TestPlannedMutatingToolsValidateInputBeforeImplementation(t *testing.T) {
 	t.Parallel()
 
 	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, newFakeABSClient())
-	if _, _, err := server.UpdateItemMetadata(context.Background(), nil, ItemPayloadInput{}); err == nil || !strings.Contains(err.Error(), "itemId") {
+	if _, _, err := server.UpdateItemMetadata(context.Background(), nil, UpdateItemMetadataInput{}); err == nil || !strings.Contains(err.Error(), "itemId") {
 		t.Fatalf("expected missing itemId error, got %v", err)
+	}
+	if _, _, err := server.UpdateItemMetadata(context.Background(), nil, UpdateItemMetadataInput{ItemID: "item-1"}); err == nil || !strings.Contains(err.Error(), "metadata field") {
+		t.Fatalf("expected missing metadata field error, got %v", err)
+	}
+	if _, _, err := server.UpdateItemProgress(context.Background(), nil, UpdateItemProgressInput{}); err == nil || !strings.Contains(err.Error(), "itemId") {
+		t.Fatalf("expected missing progress itemId error, got %v", err)
+	}
+	if _, _, err := server.UpdateItemProgress(context.Background(), nil, UpdateItemProgressInput{ItemID: "item-1"}); err == nil || !strings.Contains(err.Error(), "progress field") {
+		t.Fatalf("expected missing progress field error, got %v", err)
+	}
+	badProgress := 1.5
+	if _, _, err := server.UpdateItemProgress(context.Background(), nil, UpdateItemProgressInput{ItemID: "item-1", Progress: &badProgress}); err == nil || !strings.Contains(err.Error(), "progress") {
+		t.Fatalf("expected bad progress error, got %v", err)
+	}
+	if _, _, err := server.CreateBookmark(context.Background(), nil, BookmarkMutationInput{ItemID: "item-1", Time: -1, Title: "Start"}); err == nil || !strings.Contains(err.Error(), "time") {
+		t.Fatalf("expected bookmark time error, got %v", err)
+	}
+	if _, _, err := server.UpdateBookmark(context.Background(), nil, BookmarkMutationInput{ItemID: "item-1", Time: 1, Title: " "}); err == nil || !strings.Contains(err.Error(), "title") {
+		t.Fatalf("expected bookmark title error, got %v", err)
 	}
 	if _, _, err := server.UpdateItemCover(context.Background(), nil, UpdateItemCoverInput{ItemID: "item-1"}); err == nil || !strings.Contains(err.Error(), "cover") {
 		t.Fatalf("expected missing cover error, got %v", err)
@@ -795,6 +1247,27 @@ func TestPlannedMutatingToolsValidateInputBeforeImplementation(t *testing.T) {
 	}
 	if _, _, err := server.RemoveItemCover(context.Background(), nil, ConfirmedItemInput{ItemID: "item-1", Confirmation: "yes"}); err == nil || !strings.Contains(err.Error(), "remove cover from item-1") {
 		t.Fatalf("expected cover confirmation error, got %v", err)
+	}
+	if _, _, err := server.CreateCollection(context.Background(), nil, CollectionInput{Name: "Favorites"}); err == nil || !strings.Contains(err.Error(), "libraryId") {
+		t.Fatalf("expected collection libraryId error, got %v", err)
+	}
+	if _, _, err := server.CreateCollection(context.Background(), nil, CollectionInput{LibraryID: "lib-audio", Name: "Favorites"}); err == nil || !strings.Contains(err.Error(), "itemIds") {
+		t.Fatalf("expected collection itemIds error, got %v", err)
+	}
+	if _, _, err := server.UpdateCollection(context.Background(), nil, CollectionInput{CollectionID: "col-1"}); err == nil || !strings.Contains(err.Error(), "name or description") {
+		t.Fatalf("expected collection update field error, got %v", err)
+	}
+	if _, _, err := server.AddCollectionItem(context.Background(), nil, CollectionItemInput{CollectionID: "col-1"}); err == nil || !strings.Contains(err.Error(), "itemId") {
+		t.Fatalf("expected collection item error, got %v", err)
+	}
+	if _, _, err := server.CreatePlaylist(context.Background(), nil, PlaylistInput{Name: "Queue"}); err == nil || !strings.Contains(err.Error(), "libraryId") {
+		t.Fatalf("expected playlist libraryId error, got %v", err)
+	}
+	if _, _, err := server.UpdatePlaylist(context.Background(), nil, PlaylistInput{PlaylistID: "pl-1"}); err == nil || !strings.Contains(err.Error(), "name or description") {
+		t.Fatalf("expected playlist update field error, got %v", err)
+	}
+	if _, _, err := server.AddPlaylistItem(context.Background(), nil, PlaylistItemInput{PlaylistID: "pl-1"}); err == nil || !strings.Contains(err.Error(), "itemId") {
+		t.Fatalf("expected playlist item error, got %v", err)
 	}
 	if _, _, err := server.DeleteCollection(context.Background(), nil, ConfirmedCollectionInput{CollectionID: "col-1", Confirmation: "yes"}); err == nil || !strings.Contains(err.Error(), "delete collection col-1") {
 		t.Fatalf("expected collection confirmation error, got %v", err)
@@ -815,16 +1288,8 @@ func TestPlannedMutatingToolsAreNotImplementedWithReadOnlyDisabled(t *testing.T)
 
 	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, newFakeABSClient())
 	tests := map[string]func() error{
-		"abs_update_item_metadata": func() error {
-			_, _, err := server.UpdateItemMetadata(context.Background(), nil, ItemPayloadInput{ItemID: "item-1"})
-			return err
-		},
 		"abs_match_item": func() error {
 			_, _, err := server.MatchItem(context.Background(), nil, MatchItemInput{ItemID: "item-1"})
-			return err
-		},
-		"abs_create_collection": func() error {
-			_, _, err := server.CreateCollection(context.Background(), nil, CollectionInput{Name: "Favorites"})
 			return err
 		},
 		"abs_delete_playlist": func() error {
@@ -981,23 +1446,45 @@ func contains(values []string, target string) bool {
 }
 
 type fakeABSClient struct {
-	user                    abs.User
-	libraries               []abs.Library
-	items                   map[string][]abs.LibraryItem
-	libraryItemTotals       []int
-	getLibraryItemsCalls    int
-	lastLibraryItemsOptions abs.LibraryItemsOptions
-	scanLibraryID           string
-	scanForce               bool
-	scanItemID              string
-	updateItemCoverID       string
-	updateItemCoverPath     string
-	removeItemCoverID       string
-	updateItemChaptersID    string
-	updateItemChapters      []abs.Chapter
-	removeIssuesCalled      bool
-	removeIssuesLibraryID   string
-	err                     error
+	user                        abs.User
+	libraries                   []abs.Library
+	items                       map[string][]abs.LibraryItem
+	libraryItemTotals           []int
+	getLibraryItemsCalls        int
+	lastLibraryItemsOptions     abs.LibraryItemsOptions
+	lastCatalogListOptions      abs.CatalogListOptions
+	lastInclude                 []string
+	itemsInProgressLimit        int
+	updateItemProgressID        string
+	updateItemProgressEpisodeID string
+	updateItemProgressPayload   abs.ProgressUpdatePayload
+	createBookmarkID            string
+	createBookmarkPayload       abs.BookmarkPayload
+	updateBookmarkID            string
+	updateBookmarkPayload       abs.BookmarkPayload
+	scanLibraryID               string
+	scanForce                   bool
+	scanItemID                  string
+	updateItemMetadataID        string
+	updateItemMetadataPayload   abs.ItemMetadataPayload
+	updateItemCoverID           string
+	updateItemCoverPath         string
+	removeItemCoverID           string
+	updateItemChaptersID        string
+	updateItemChapters          []abs.Chapter
+	createCollectionPayload     abs.CollectionPayload
+	updateCollectionID          string
+	updateCollectionPayload     abs.CollectionPayload
+	addCollectionID             string
+	addCollectionItemID         string
+	createPlaylistPayload       abs.PlaylistPayload
+	updatePlaylistID            string
+	updatePlaylistPayload       abs.PlaylistPayload
+	addPlaylistID               string
+	addPlaylistItem             abs.PlaylistItemPayload
+	removeIssuesCalled          bool
+	removeIssuesLibraryID       string
+	err                         error
 }
 
 func newFakeABSClient() *fakeABSClient {
@@ -1191,11 +1678,139 @@ func (f *fakeABSClient) GetLibraryFilterData(_ context.Context, libraryID string
 	return map[string]any{"libraryId": libraryID, "genres": []any{"fiction"}}, nil
 }
 
+func (f *fakeABSClient) ListLibraryAuthors(_ context.Context, libraryID string, options abs.CatalogListOptions) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.lastCatalogListOptions = options
+	return map[string]any{
+		"libraryId": libraryID,
+		"results":   []any{map[string]any{"id": "author-1", "name": "Lewis Carroll"}},
+		"total":     1,
+	}, nil
+}
+
+func (f *fakeABSClient) GetAuthor(_ context.Context, authorID string, include []string) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.lastInclude = include
+	return map[string]any{"id": authorID, "name": "Lewis Carroll"}, nil
+}
+
+func (f *fakeABSClient) ListLibrarySeries(_ context.Context, libraryID string, options abs.CatalogListOptions) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.lastCatalogListOptions = options
+	return map[string]any{
+		"libraryId": libraryID,
+		"results":   []any{map[string]any{"id": "series-1", "name": "Alice Books"}},
+		"total":     1,
+	}, nil
+}
+
+func (f *fakeABSClient) GetSeries(_ context.Context, seriesID string, include []string) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.lastInclude = include
+	return map[string]any{"id": seriesID, "name": "Alice Books"}, nil
+}
+
+func (f *fakeABSClient) ListCollections(context.Context) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return map[string]any{"collections": []any{map[string]any{"id": "col-1", "name": "Favorites"}}}, nil
+}
+
+func (f *fakeABSClient) GetCollection(_ context.Context, collectionID string, include []string) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.lastInclude = include
+	return map[string]any{"id": collectionID, "name": "Favorites"}, nil
+}
+
+func (f *fakeABSClient) GetItemsInProgress(_ context.Context, limit int) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.itemsInProgressLimit = limit
+	return map[string]any{
+		"libraryItems": []any{
+			map[string]any{"id": "item-1", "progressLastUpdate": 123},
+		},
+	}, nil
+}
+
+func (f *fakeABSClient) GetItemProgress(_ context.Context, itemID string, episodeID string) (*abs.MediaProgress, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return &abs.MediaProgress{
+		ID:            "progress-1",
+		UserID:        "user-1",
+		LibraryItemID: itemID,
+		EpisodeID:     episodeID,
+		CurrentTime:   42,
+		Progress:      0.5,
+	}, nil
+}
+
+func (f *fakeABSClient) ListBookmarks(context.Context) ([]abs.Bookmark, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return []abs.Bookmark{
+		{LibraryItemID: "item-1", Time: 12.5, Title: "Start", CreatedAt: 123},
+		{LibraryItemID: "item-2", Time: 24, Title: "Middle", CreatedAt: 456},
+	}, nil
+}
+
+func (f *fakeABSClient) UpdateItemProgress(_ context.Context, itemID string, episodeID string, payload abs.ProgressUpdatePayload) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.updateItemProgressID = itemID
+	f.updateItemProgressEpisodeID = episodeID
+	f.updateItemProgressPayload = payload
+	return nil
+}
+
+func (f *fakeABSClient) CreateBookmark(_ context.Context, itemID string, payload abs.BookmarkPayload) (*abs.Bookmark, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.createBookmarkID = itemID
+	f.createBookmarkPayload = payload
+	return &abs.Bookmark{LibraryItemID: itemID, Time: payload.Time, Title: payload.Title}, nil
+}
+
+func (f *fakeABSClient) UpdateBookmark(_ context.Context, itemID string, payload abs.BookmarkPayload) (*abs.Bookmark, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.updateBookmarkID = itemID
+	f.updateBookmarkPayload = payload
+	return &abs.Bookmark{LibraryItemID: itemID, Time: payload.Time, Title: payload.Title}, nil
+}
+
 func (f *fakeABSClient) GetItemMetadataObject(_ context.Context, itemID string) (abs.JSONValue, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
 	return map[string]any{"itemId": itemID, "title": "Alice"}, nil
+}
+
+func (f *fakeABSClient) UpdateItemMetadata(_ context.Context, itemID string, payload abs.ItemMetadataPayload) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.updateItemMetadataID = itemID
+	f.updateItemMetadataPayload = payload
+	return map[string]any{"updated": true, "libraryItem": map[string]any{"id": itemID}}, nil
 }
 
 func (f *fakeABSClient) ScanLibrary(_ context.Context, libraryID string, force bool) error {
@@ -1239,6 +1854,58 @@ func (f *fakeABSClient) UpdateItemChapters(_ context.Context, itemID string, cha
 	f.updateItemChaptersID = itemID
 	f.updateItemChapters = chapters
 	return map[string]any{"itemId": itemID, "chapterCount": len(chapters)}, nil
+}
+
+func (f *fakeABSClient) CreateCollection(_ context.Context, payload abs.CollectionPayload) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.createCollectionPayload = payload
+	return map[string]any{"id": "col-1", "name": payload.Name}, nil
+}
+
+func (f *fakeABSClient) UpdateCollection(_ context.Context, collectionID string, payload abs.CollectionPayload) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.updateCollectionID = collectionID
+	f.updateCollectionPayload = payload
+	return map[string]any{"id": collectionID, "name": payload.Name}, nil
+}
+
+func (f *fakeABSClient) AddCollectionItem(_ context.Context, collectionID string, itemID string) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.addCollectionID = collectionID
+	f.addCollectionItemID = itemID
+	return map[string]any{"id": collectionID, "addedItemId": itemID}, nil
+}
+
+func (f *fakeABSClient) CreatePlaylist(_ context.Context, payload abs.PlaylistPayload) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.createPlaylistPayload = payload
+	return map[string]any{"id": "pl-1", "name": payload.Name}, nil
+}
+
+func (f *fakeABSClient) UpdatePlaylist(_ context.Context, playlistID string, payload abs.PlaylistPayload) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.updatePlaylistID = playlistID
+	f.updatePlaylistPayload = payload
+	return map[string]any{"id": playlistID, "name": payload.Name}, nil
+}
+
+func (f *fakeABSClient) AddPlaylistItem(_ context.Context, playlistID string, payload abs.PlaylistItemPayload) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.addPlaylistID = playlistID
+	f.addPlaylistItem = payload
+	return map[string]any{"id": playlistID, "addedItemId": payload.LibraryItemID}, nil
 }
 
 func (f *fakeABSClient) RemoveLibraryItemsWithIssues(_ context.Context, libraryID string) error {

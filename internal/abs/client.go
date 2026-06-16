@@ -218,11 +218,205 @@ func (c *Client) GetLibraryFilterData(ctx context.Context, libraryID string) (JS
 	return response, nil
 }
 
+// ListLibraryAuthors returns one source-backed page of authors from a library.
+func (c *Client) ListLibraryAuthors(ctx context.Context, libraryID string, options CatalogListOptions) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/libraries/%s/authors", url.PathEscape(libraryID))
+	if err := c.getJSON(ctx, path, catalogListQuery(options), &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// GetAuthor returns one source-backed author object.
+func (c *Client) GetAuthor(ctx context.Context, authorID string, include []string) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/authors/%s", url.PathEscape(authorID))
+	if err := c.getJSON(ctx, path, includeQuery(include), &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// ListLibrarySeries returns one source-backed page of series from a library.
+func (c *Client) ListLibrarySeries(ctx context.Context, libraryID string, options CatalogListOptions) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/libraries/%s/series", url.PathEscape(libraryID))
+	if err := c.getJSON(ctx, path, catalogListQuery(options), &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// GetSeries returns one source-backed series object.
+func (c *Client) GetSeries(ctx context.Context, seriesID string, include []string) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/series/%s", url.PathEscape(seriesID))
+	if err := c.getJSON(ctx, path, includeQuery(include), &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// ListCollections returns collections visible to the authenticated ABS user.
+func (c *Client) ListCollections(ctx context.Context) (JSONValue, error) {
+	var response any
+	if err := c.getJSON(ctx, "/api/collections", nil, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// GetCollection returns one source-backed collection object.
+func (c *Client) GetCollection(ctx context.Context, collectionID string, include []string) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/collections/%s", url.PathEscape(collectionID))
+	if err := c.getJSON(ctx, path, includeQuery(include), &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// GetItemsInProgress returns source-backed current-user items in progress.
+func (c *Client) GetItemsInProgress(ctx context.Context, limit int) (JSONValue, error) {
+	query := url.Values{}
+	if limit > 0 {
+		query.Set("limit", fmt.Sprintf("%d", limit))
+	}
+	var response any
+	if err := c.getJSON(ctx, "/api/me/items-in-progress", query, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// GetItemProgress returns current-user progress for one library item or episode.
+func (c *Client) GetItemProgress(ctx context.Context, itemID string, episodeID string) (*MediaProgress, error) {
+	path := fmt.Sprintf("/api/me/progress/%s", url.PathEscape(itemID))
+	if episodeID != "" {
+		path += "/" + url.PathEscape(episodeID)
+	}
+	var progress MediaProgress
+	if err := c.getJSON(ctx, path, nil, &progress); err != nil {
+		return nil, err
+	}
+	return &progress, nil
+}
+
+// ListBookmarks returns current-user bookmarks without exposing the full user payload.
+func (c *Client) ListBookmarks(ctx context.Context) ([]Bookmark, error) {
+	var response struct {
+		Bookmarks []Bookmark `json:"bookmarks"`
+	}
+	if err := c.getJSON(ctx, "/api/me", nil, &response); err != nil {
+		return nil, err
+	}
+	return response.Bookmarks, nil
+}
+
+// UpdateItemProgress creates or updates current-user progress for one item.
+func (c *Client) UpdateItemProgress(ctx context.Context, itemID string, episodeID string, payload ProgressUpdatePayload) error {
+	path := fmt.Sprintf("/api/me/progress/%s", url.PathEscape(itemID))
+	if episodeID != "" {
+		path += "/" + url.PathEscape(episodeID)
+	}
+	return c.doJSON(ctx, http.MethodPatch, path, nil, payload, nil)
+}
+
+// CreateBookmark creates one current-user bookmark for a library item.
+func (c *Client) CreateBookmark(ctx context.Context, itemID string, payload BookmarkPayload) (*Bookmark, error) {
+	var response Bookmark
+	path := fmt.Sprintf("/api/me/item/%s/bookmark", url.PathEscape(itemID))
+	if err := c.doJSON(ctx, http.MethodPost, path, nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+// UpdateBookmark updates one current-user bookmark for a library item and time.
+func (c *Client) UpdateBookmark(ctx context.Context, itemID string, payload BookmarkPayload) (*Bookmark, error) {
+	var response Bookmark
+	path := fmt.Sprintf("/api/me/item/%s/bookmark", url.PathEscape(itemID))
+	if err := c.doJSON(ctx, http.MethodPatch, path, nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+// CreateCollection creates one ABS collection with an initial book list.
+func (c *Client) CreateCollection(ctx context.Context, payload CollectionPayload) (JSONValue, error) {
+	var response any
+	if err := c.doJSON(ctx, http.MethodPost, "/api/collections", nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// UpdateCollection updates one ABS collection's non-membership fields.
+func (c *Client) UpdateCollection(ctx context.Context, collectionID string, payload CollectionPayload) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/collections/%s", url.PathEscape(collectionID))
+	if err := c.doJSON(ctx, http.MethodPatch, path, nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// AddCollectionItem adds one library item to an ABS collection.
+func (c *Client) AddCollectionItem(ctx context.Context, collectionID string, itemID string) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/collections/%s/book", url.PathEscape(collectionID))
+	payload := map[string]string{"id": itemID}
+	if err := c.doJSON(ctx, http.MethodPost, path, nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// CreatePlaylist creates one ABS playlist.
+func (c *Client) CreatePlaylist(ctx context.Context, payload PlaylistPayload) (JSONValue, error) {
+	var response any
+	if err := c.doJSON(ctx, http.MethodPost, "/api/playlists", nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// UpdatePlaylist updates one ABS playlist's non-membership fields.
+func (c *Client) UpdatePlaylist(ctx context.Context, playlistID string, payload PlaylistPayload) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/playlists/%s", url.PathEscape(playlistID))
+	if err := c.doJSON(ctx, http.MethodPatch, path, nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// AddPlaylistItem adds one item or podcast episode to an ABS playlist.
+func (c *Client) AddPlaylistItem(ctx context.Context, playlistID string, payload PlaylistItemPayload) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/playlists/%s/item", url.PathEscape(playlistID))
+	if err := c.doJSON(ctx, http.MethodPost, path, nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 // GetItemMetadataObject returns the raw ABS metadata object for one item.
 func (c *Client) GetItemMetadataObject(ctx context.Context, itemID string) (JSONValue, error) {
 	var response any
 	path := fmt.Sprintf("/api/items/%s/metadata-object", url.PathEscape(itemID))
 	if err := c.getJSON(ctx, path, nil, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// UpdateItemMetadata updates source-verified item metadata fields.
+func (c *Client) UpdateItemMetadata(ctx context.Context, itemID string, payload ItemMetadataPayload) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/items/%s/media", url.PathEscape(itemID))
+	if err := c.doJSON(ctx, http.MethodPatch, path, nil, payload, &response); err != nil {
 		return nil, err
 	}
 	return response, nil
@@ -431,4 +625,37 @@ func normalizeExtraHeaderName(name string) (string, error) {
 		}
 	}
 	return http.CanonicalHeaderKey(name), nil
+}
+
+func catalogListQuery(options CatalogListOptions) url.Values {
+	query := url.Values{}
+	if options.Limit > 0 {
+		query.Set("limit", fmt.Sprintf("%d", options.Limit))
+		query.Set("page", fmt.Sprintf("%d", options.Page))
+	}
+	if options.Sort != "" {
+		query.Set("sort", options.Sort)
+	}
+	if options.Desc {
+		query.Set("desc", "1")
+	}
+	if options.Filter != "" {
+		query.Set("filter", options.Filter)
+	}
+	if len(options.Include) > 0 {
+		query.Set("include", strings.Join(options.Include, ","))
+	}
+	if options.Minified {
+		query.Set("minified", "1")
+	}
+	return query
+}
+
+func includeQuery(include []string) url.Values {
+	if len(include) == 0 {
+		return nil
+	}
+	query := url.Values{}
+	query.Set("include", strings.Join(include, ","))
+	return query
 }

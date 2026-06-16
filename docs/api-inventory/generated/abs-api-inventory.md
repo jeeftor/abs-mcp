@@ -1,6 +1,6 @@
 # Audiobookshelf API Inventory
 
-- Source ref: `2d0a5462d2234a8c1f853c9c23b790dc8e690fb5`
+- Source ref: `e70e4b9d40a6251897e114c4154add8c05ad0944`
 - Source path: `server/routers/ApiRouter.js`
 - Total routes: `198`
 - Read-only routes: `83`

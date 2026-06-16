@@ -20,8 +20,8 @@ Primary source:
 
 Current generated baseline:
 
-- Source ref: `2d0a5462d2234a8c1f853c9c23b790dc8e690fb5`
-- Source commit date: `2026-05-17T19:31:45Z`
+- Source ref: `e70e4b9d40a6251897e114c4154add8c05ad0944`
+- Source commit date: `2026-05-30T20:43:50Z`
 - Inventory: `docs/api-inventory/generated/abs-api-inventory.json`
 - Route count: 198 total, 83 read-only by HTTP method, 115 mutating by HTTP method
 
@@ -93,6 +93,21 @@ These are read-heavy, broadly useful, and fixture-testable.
   - Purpose: inspect ABS metadata sidecar payloads.
   - Mutates: no.
 
+- `abs_get_items_in_progress`
+  - API basis: `GET /api/me/items-in-progress`.
+  - Purpose: inspect in-progress items for the configured ABS user.
+  - Mutates: no.
+
+- `abs_get_item_progress`
+  - API basis: `GET /api/me/progress/:id/:episodeId?`.
+  - Purpose: inspect progress for one item or podcast episode for the configured ABS user.
+  - Mutates: no.
+
+- `abs_list_bookmarks`
+  - API basis: `GET /api/me`, extracting only `bookmarks`.
+  - Purpose: inspect bookmarks for the configured ABS user without exposing the full user payload.
+  - Mutates: no.
+
 - `abs_scan_item`
   - API basis: `POST /api/items/:id/scan`.
   - Purpose: rescan a single item after targeted changes.
@@ -107,10 +122,10 @@ These are read-heavy, broadly useful, and fixture-testable.
 
 These are useful but riskier, larger, or less central to MCP-first workflows.
 
-- Metadata mutation: `PATCH /api/items/:id/media`
-- Cover upload/update/delete
+- Broad or raw metadata mutation beyond the typed allowlist
+- Cover upload
 - File download and ebook file retrieval
-- Collections and playlists mutation
+- Destructive collection and playlist removal/deletion
 - Playback sessions and progress mutation
 - Podcast download and matching operations
 - Server settings, backups, notifications, API keys, cache, and tools endpoints
@@ -128,27 +143,43 @@ Already exposed:
 - `abs_scan_item`: `POST /api/items/:id/scan`
 - `abs_remove_library_items_with_issues`: `DELETE /api/libraries/:id/issues`,
   with exact confirmation and optional expected issue count.
+- `abs_update_item_metadata`: `PATCH /api/items/:id/media`, restricted to a
+  typed allowlist of source-verified catalog fields.
+- `abs_update_item_cover`: `PATCH /api/items/:id/cover`
+- `abs_remove_item_cover`: `DELETE /api/items/:id/cover`, with exact
+  confirmation.
+- `abs_update_item_chapters`: `POST /api/items/:id/chapters`, with an expected
+  chapter-count guard.
+- `abs_create_collection`, `abs_update_collection`, `abs_add_collection_item`:
+  `POST /api/collections`, `PATCH /api/collections/:id`, and
+  `POST /api/collections/:id/book`.
+- `abs_create_playlist`, `abs_update_playlist`, `abs_add_playlist_item`:
+  `POST /api/playlists`, `PATCH /api/playlists/:id`, and
+  `POST /api/playlists/:id/item`.
+- `abs_update_item_progress`: `PATCH /api/me/progress/:libraryItemId/:episodeId?`,
+  scoped to the configured ABS user.
+- `abs_create_bookmark`, `abs_update_bookmark`: `POST|PATCH
+  /api/me/item/:id/bookmark`, scoped to the configured ABS user.
 
 High-fit future candidates:
 
-- `abs_update_item_metadata`: `PATCH /api/items/:id/media`. Useful companion to
-  `abs_get_item_metadata_object`; needs a typed allowlist of editable metadata
-  fields and fixture coverage for sidecar behavior.
-- `abs_update_item_cover` / `abs_remove_item_cover`: `PATCH|POST|DELETE
-  /api/items/:id/cover`. Cover deletion is destructive and must require
-  confirmation.
+- Additional raw metadata payload support for `PATCH /api/items/:id/media`
+  should remain deferred unless a source-verified workflow requires fields that
+  are not covered by the typed `abs_update_item_metadata` allowlist.
+- Cover upload: `POST /api/items/:id/cover`. Upload behavior needs source and
+  fixture proof before exposure.
 - `abs_match_item`: `POST /api/items/:id/match`. Potentially useful after
   misorganization or metadata audits; needs source review of overwrite behavior
   before exposure.
-- `abs_update_item_chapters` and `abs_update_item_tracks`: `POST
-  /api/items/:id/chapters`, `PATCH /api/items/:id/tracks`. Useful for repair
+- `abs_update_item_tracks`: `PATCH /api/items/:id/tracks`. Useful for repair
   workflows, but schema and media-type behavior need source and fixture proof.
-- Collection and playlist management: `/collections*` and `/playlists*`.
-  Create/update/add/remove workflows are reasonable; delete workflows require
-  confirmation.
-- User-library progress and bookmarks: `/me/progress*` and
-  `/me/item/:id/bookmark`. Useful for personal automation, but should be
-  separated from library-admin tools and scoped to the configured ABS user.
+- Destructive collection and playlist management: `DELETE /api/collections/:id`,
+  `DELETE /api/collections/:id/book/:bookId`, `DELETE /api/playlists/:id`, and
+  `DELETE /api/playlists/:id/item/:libraryItemId/:episodeId?`. Delete/remove
+  workflows require confirmation and fixture proof.
+- Destructive current-user progress/bookmark cleanup:
+  `DELETE /me/progress/:id` and `DELETE /me/item/:id/bookmark/:time`. These
+  should require confirmation because they remove user state.
 
 Lower-fit or admin-heavy candidates:
 

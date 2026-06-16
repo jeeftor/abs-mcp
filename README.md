@@ -16,7 +16,7 @@ maintenance workflows.
 
 - [Highlights](#highlights)
 - [Audiobook Organizer Compatibility](#audiobook-organizer-compatibility)
-- [AI Generated Comparison - Last updated 2026-05-20](#ai-generated-comparison---last-updated-2026-05-20)
+- [AI Generated Comparison - Last updated 2026-06-03](#ai-generated-comparison---last-updated-2026-06-03)
 - [Quick Start](#quick-start)
 - [MCP Surface](#mcp-surface)
 - [Configuration](#configuration)
@@ -31,8 +31,8 @@ maintenance workflows.
 ## Highlights
 
 - Read-only by default; scan and cleanup tools require `ABS_READ_ONLY=false`.
-- Ships as a local stdio MCP server from a single Go binary or Docker image;
-  Streamable HTTP is a good future fit for hosted or multi-client deployments.
+- Ships as a local stdio MCP server from a single Go binary or Docker image,
+  with optional Streamable HTTP mode for hosted or multi-client deployments.
 - Supports env vars, Docker-style env files, extra headers, and custom TLS CA
   bundles.
 - Includes source-backed Audiobookshelf API inventory resources and repeatable
@@ -57,17 +57,19 @@ problems from Audiobookshelf's perspective, then use Audiobook Organizer to
 clean up or standardize the underlying files.
 
 <!-- AI-GENERATED-COMPARISON:START -->
-## AI Generated Comparison - Last updated 2026-05-20
+## AI Generated Comparison - Last updated 2026-06-03
 
 This comparison is generated from public project READMEs, registry pages, and
 this repository's current docs. It is descriptive rather than a recommendation.
 
 Mutating versus non-mutating coverage:
 
-- `jeeftor/abs-mcp` exposes read-only inspection, search, metadata-object,
-  layout-audit, resources, and prompts by default. Scan, cleanup, cover, and
-  chapter tools can mutate Audiobookshelf state only when `ABS_READ_ONLY=false`;
-  destructive operations also require exact confirmation strings.
+- `jeeftor/abs-mcp` exposes read-only inspection, search, author, series,
+  collection, current-user progress/bookmark reads, metadata-object,
+  layout-audit, resources, and prompts by default. Scan, cleanup, cover,
+  chapter, and non-destructive collection/playlist create/update/add tools can
+  mutate Audiobookshelf state only when `ABS_READ_ONLY=false`; destructive
+  operations also require exact confirmation strings.
 - `michaeldvinci/audiobookshelf-mcp` exposes a broad management surface with
   read tools plus mutating operations such as library, collection, playlist,
   progress, and backup actions. No public README evidence was found for a
@@ -75,32 +77,27 @@ Mutating versus non-mutating coverage:
 - `sandymac/audiobookshelf-mcp` is mostly read/query oriented, with optional
   progress and bookmark mutation tools that are disabled by default.
 - `sierikov/audiobookshelf-mcp` presents a read-only browsing, search, progress,
-  and stats surface.
+  stats, author, series, and collection surface.
 - `ForceConstant/audiobookshelf_mcp` appears to be generated from
   Audiobookshelf OpenAPI material; mutating coverage and safety gates were not
   determinable from the public README.
 
 Candidate gaps from this comparison:
 
-- [#2](https://github.com/jeeftor/abs-mcp/issues/2): Add playback progress and
-  bookmark MCP tools. Other servers expose progress/session inspection, and
-  `sandymac/audiobookshelf-mcp` exposes optional progress/bookmark mutations.
-- [#3](https://github.com/jeeftor/abs-mcp/issues/3): Add richer author, series,
-  and collection read tools. Public peers expose broader browsing in these
-  areas than this server currently documents.
+- Candidate: add current-user listening stats and recent-session read tools.
+  Other servers expose progress-adjacent stats/session inspection; this server
+  now exposes current-user progress and bookmark reads plus non-destructive
+  progress/bookmark mutations, but not recent sessions or listening statistics.
 - [#4](https://github.com/jeeftor/abs-mcp/issues/4): Investigate safely gated
   backup and server-admin MCP tools. At least one public peer exposes backup
   creation, but any admin operation here should be source-verified,
   fixture-tested, and gated.
-- [#5](https://github.com/jeeftor/abs-mcp/issues/5): Investigate Streamable HTTP
-  transport support. Public peers include HTTP/SSE or generated Streamable HTTP
-  variants, while this server currently focuses on stdio.
 
 | Server | Shape | Confirmed strengths | Safety posture | Difference from `jeeftor/abs-mcp` |
 | --- | --- | --- | --- | --- |
-| [`michaeldvinci/audiobookshelf-mcp`](https://github.com/michaeldvinci/audiobookshelf-mcp) | Go stdio server with release binaries. | Broad general Audiobookshelf management, including libraries, items, authors, collections, playlists, user info, sessions, podcasts, progress updates, and backups. | Exposes mutating tools; no global default read-only gate was found in the public README during this comparison pass. | Broader generic management surface, but less conservative. No public evidence was found for a misorganized-file audit, source-backed API inventory, MCP resources/prompts, cover removal/update, or chapter update tooling. |
-| [`sandymac/audiobookshelf-mcp`](https://github.com/sandymac/audiobookshelf-mcp) | Rust server with stdio plus HTTP/SSE support. | Read/query surface for libraries, search, progress, stats, recent sessions, and optional progress/bookmark mutations. | Mutating tools are disabled by default and must be explicitly enabled. HTTP mode recommends bearer auth and TLS proxying. | Similar safety model, but narrower feature scope. No public evidence was found for metadata, cover, chapter repair tools, organizer-oriented audits, or fixture/API-inventory workflows. |
-| [`sierikov/audiobookshelf-mcp`](https://github.com/sierikov/audiobookshelf-mcp) | Go server with read-oriented tooling and release binaries. | Read-only browsing and search across libraries, items, progress, stats, sessions, series, authors, and collections. | Public README presents it as read-only. | Useful inspection surface, but not a controlled repair workflow. No public evidence was found for mutating metadata, cover, chapter, cleanup, or organizer-focused audit tooling. |
+| [`michaeldvinci/audiobookshelf-mcp`](https://github.com/michaeldvinci/audiobookshelf-mcp) | Go stdio server with release binaries. | Broad general Audiobookshelf management, including libraries, items, authors, collections, playlists, user info, sessions, podcasts, progress updates, and backups. | Exposes mutating tools; no global default read-only gate was found in the public README during this comparison pass. | Broader generic management surface, but less conservative. This server now overlaps typed metadata and collection/playlist create and add-item coverage, while adding default read-only gating, destructive confirmations, a misorganized-file audit, source-backed API inventory, MCP resources/prompts, and guarded cover/chapter repair tooling. |
+| [`sandymac/audiobookshelf-mcp`](https://github.com/sandymac/audiobookshelf-mcp) | Rust server with stdio plus HTTP/SSE support. | Read/query surface for libraries, search, progress, stats, recent sessions, and optional progress/bookmark mutations. | Mutating tools are disabled by default and must be explicitly enabled. HTTP mode recommends bearer auth and TLS proxying. | Similar safety model. It has stats/session tools; this server now overlaps progress/bookmark mutation coverage while adding optional Streamable HTTP, source-backed API inventory, resources/prompts, organizer-oriented audits, fixture workflows, and guarded metadata/repair/catalog mutation tools. |
+| [`sierikov/audiobookshelf-mcp`](https://github.com/sierikov/audiobookshelf-mcp) | Go server with read-oriented tooling and release binaries. | Read-only browsing and search across libraries, items, progress, stats, sessions, series, authors, and collections. | Public README presents it as read-only. | Overlaps this server's read-only browsing surface, including progress, author, series, and collection reads, but no public evidence was found for controlled repair/catalog mutation workflows, source-backed API inventory, MCP prompts/resources, or organizer-focused audit tooling. |
 | [`ForceConstant/audiobookshelf_mcp`](https://github.com/ForceConstant/audiobookshelf_mcp) | Generated OpenAPI MCP bridge with streamable HTTP and Docker-oriented files. | Broad generated API exposure from Audiobookshelf OpenAPI material. | Not determinable from the public README; generated API exposure may include mutating endpoints, but the README does not enumerate safety controls. | Less curated and less operator-specific. This project intentionally exposes bounded, typed tools with read-only gating and fixture-backed behavior checks instead of exposing every route directly. |
 
 Weak or placeholder hits, such as
@@ -148,6 +145,15 @@ Read-only tools:
 - `abs_search_library`
 - `abs_get_library_stats`
 - `abs_get_filter_data`
+- `abs_list_library_authors`
+- `abs_get_author`
+- `abs_list_library_series`
+- `abs_get_series`
+- `abs_list_collections`
+- `abs_get_collection`
+- `abs_get_items_in_progress`
+- `abs_get_item_progress`
+- `abs_list_bookmarks`
 - `abs_get_item_metadata_object`
 - `abs_find_misorganized_items`
 
@@ -156,34 +162,39 @@ Implemented mutating tools:
 - `abs_scan_library`
 - `abs_scan_library_and_wait`
 - `abs_scan_item`
+- `abs_update_item_metadata`
+- `abs_update_item_progress`
+- `abs_create_bookmark`
+- `abs_update_bookmark`
 - `abs_update_item_cover`
 - `abs_remove_item_cover`
 - `abs_update_item_chapters`
+- `abs_create_collection`
+- `abs_update_collection`
+- `abs_add_collection_item`
+- `abs_create_playlist`
+- `abs_update_playlist`
+- `abs_add_playlist_item`
 - `abs_remove_library_items_with_issues`
 
 Planned mutating tools advertised for discovery:
 
-- `abs_update_item_metadata`
 - `abs_match_item`
 - `abs_update_item_tracks`
-- `abs_create_collection`
-- `abs_update_collection`
 - `abs_delete_collection`
-- `abs_add_collection_item`
 - `abs_remove_collection_item`
-- `abs_create_playlist`
-- `abs_update_playlist`
 - `abs_delete_playlist`
-- `abs_add_playlist_item`
 - `abs_remove_playlist_item`
 
 Mutating tools are blocked by default because `ABS_READ_ONLY` defaults to
 `true`. Scan tools, issue cleanup, `abs_update_item_cover`,
-`abs_remove_item_cover`, and `abs_update_item_chapters` are implemented.
-Remaining planned mutating tools, including broad metadata updates and item
-matching, are advertised for discovery but return a not-implemented error after
-read-only and confirmation checks until their ABS source and fixture behavior
-are verified.
+`abs_remove_item_cover`, `abs_update_item_chapters`, typed item metadata,
+current-user progress/bookmark writes, and non-destructive collection/playlist
+create, update, and add-item tools are implemented. Remaining planned mutating
+tools, including item matching,
+delete/remove collection and playlist operations, and item track updates, are
+advertised for discovery but return a not-implemented error after read-only and
+confirmation checks until their ABS source and fixture behavior is verified.
 
 ### Resources
 
@@ -221,6 +232,10 @@ export ABS_FIXTURE_DIR=test/abs
 export ABS_EXTRA_HEADERS_FILE=/path/to/headers.json
 export ABS_TLS_CA_CERT_FILE=/path/to/corporate-ca.pem
 export ABS_TLS_INSECURE_SKIP_VERIFY=false
+export ABS_TRANSPORT=stdio
+export ABS_HTTP_ADDR=127.0.0.1:3333
+export ABS_HTTP_PATH=/mcp
+export ABS_HTTP_BEARER_TOKEN=
 ```
 
 The server can load those same values from a Docker-style env file:
@@ -244,11 +259,14 @@ go run ./cmd/abs-mcp \
   --extra-headers-file /path/to/headers.json \
   --header 'CF-Access-Client-Id=...' \
   --header 'CF-Access-Client-Secret=...' \
-  --tls-ca-cert-file /path/to/corporate-ca.pem
+  --tls-ca-cert-file /path/to/corporate-ca.pem \
+  --transport stdio \
+  --http-bearer-token ...
 ```
 
-Prefer `ABS_API_KEY` over `--api-key` outside short local debugging sessions so
-tokens do not land in shell history or process listings.
+Prefer `ABS_API_KEY` and `ABS_HTTP_BEARER_TOKEN` over `--api-key` and
+`--http-bearer-token` outside short local debugging sessions so tokens do not
+land in shell history or process listings.
 
 | Environment variable | CLI flag | Default |
 | --- | --- | --- |
@@ -262,6 +280,20 @@ tokens do not land in shell history or process listings.
 | n/a | `--header NAME=VALUE` | unset |
 | `ABS_TLS_CA_CERT_FILE` | `--tls-ca-cert-file` | unset |
 | `ABS_TLS_INSECURE_SKIP_VERIFY` | `--tls-insecure-skip-verify` | `false` |
+| `ABS_TRANSPORT` | `--transport` | `stdio` |
+| `ABS_HTTP_ADDR` | `--http-addr` | `127.0.0.1:3333` |
+| `ABS_HTTP_PATH` | `--http-path` | `/mcp` |
+| `ABS_HTTP_BEARER_TOKEN` | `--http-bearer-token` | unset |
+
+Use `ABS_TRANSPORT=http` or `--transport=http` to serve Streamable HTTP at
+`http://<ABS_HTTP_ADDR><ABS_HTTP_PATH>`. The default bind address is local-only.
+When `ABS_HTTP_BEARER_TOKEN` is set, HTTP clients must send
+`Authorization: Bearer <token>` to the MCP endpoint. This token protects the MCP
+HTTP endpoint and is separate from the upstream `ABS_API_KEY` sent to
+Audiobookshelf. For remote or multi-user access, put the server behind a
+TLS/authenticating reverse proxy such as Cloudflare Access / Zero Trust and keep
+Audiobookshelf credentials in environment variables or secret files, not URL
+query parameters.
 
 `ABS_EXTRA_HEADERS_FILE` is optional. When set, it must point to a JSON object
 of string header names to string values, for example
@@ -295,25 +327,28 @@ These tools can mutate Audiobookshelf state and require `ABS_READ_ONLY=false`:
 - `abs_update_item_cover`
 - `abs_remove_item_cover`
 - `abs_update_item_chapters`
-- `abs_update_item_metadata` (planned; not implemented)
+- `abs_update_item_metadata`
+- `abs_update_item_progress`
+- `abs_create_bookmark`
+- `abs_update_bookmark`
 - `abs_match_item` (planned; not implemented)
-- `abs_update_item_tracks`
+- `abs_update_item_tracks` (planned; not implemented)
 - `abs_create_collection`
 - `abs_update_collection`
-- `abs_delete_collection`
+- `abs_delete_collection` (planned; not implemented)
 - `abs_add_collection_item`
-- `abs_remove_collection_item`
+- `abs_remove_collection_item` (planned; not implemented)
 - `abs_create_playlist`
 - `abs_update_playlist`
-- `abs_delete_playlist`
+- `abs_delete_playlist` (planned; not implemented)
 - `abs_add_playlist_item`
-- `abs_remove_playlist_item`
+- `abs_remove_playlist_item` (planned; not implemented)
 - `abs_remove_library_items_with_issues`
 
-The newly advertised item, collection, and playlist mutation tools are stubs:
-they validate read-only mode and destructive confirmations, then return a clear
-not-implemented error until their Audiobookshelf source and Docker fixture
-behavior are verified.
+The item match, item track, and destructive collection/playlist delete/remove
+tools are stubs: they validate read-only mode and destructive confirmations,
+then return a clear not-implemented error until their Audiobookshelf source and
+Docker fixture behavior are verified.
 
 `abs_remove_library_items_with_issues` also requires the exact confirmation
 string `remove issues from <libraryId>` and can check an expected issue count
@@ -335,14 +370,28 @@ authentication.
 
 Download a release archive from the
 [GitHub releases page](https://github.com/jeeftor/abs-mcp/releases), unpack it,
-and point your MCP client at the `abs-mcp` binary. The server speaks MCP over
-stdio.
+and point your MCP client at the `abs-mcp` binary. The server defaults to MCP
+over stdio, which remains the release and registry path.
 
 For local development, you can also run the server from source:
 
 ```bash
 go run ./cmd/abs-mcp
 ```
+
+For local Streamable HTTP testing:
+
+```bash
+ABS_TRANSPORT=http \
+ABS_HTTP_ADDR=127.0.0.1:3333 \
+ABS_HTTP_PATH=/mcp \
+ABS_HTTP_BEARER_TOKEN=dev-mcp-token \
+go run ./cmd/abs-mcp
+```
+
+Point Streamable HTTP clients, including local tools such as Hermes or MCP
+Inspector, at `http://127.0.0.1:3333/mcp`. If `ABS_HTTP_BEARER_TOKEN` is set,
+configure the client to send the matching bearer token.
 
 ### Client Configs
 
@@ -562,7 +611,9 @@ path:
 
 - Registry name: `io.github.jeeftor/abs-mcp`
 - Package: `ghcr.io/jeeftor/abs-mcp:<version>`
-- Transport: `stdio`
+- Registry transport: `stdio`
+- Runtime transports: `stdio` by default; optional local Streamable HTTP with
+  `ABS_TRANSPORT=http`
 - Metadata file: `server.json`
 
 The Docker image includes the required MCP ownership label
@@ -576,4 +627,5 @@ dedicated registry secret.
 After the official registry entry is published, downstream aggregators can pick
 it up from the registry API. Glama is the next practical listing target.
 Smithery should wait until this project either ships an MCPB bundle for stdio
-distribution or adds a public Streamable HTTP transport with appropriate auth.
+distribution or has a hardened public Streamable HTTP deployment profile with
+documented external authentication.

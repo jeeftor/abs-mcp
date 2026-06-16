@@ -53,6 +53,122 @@ type LibraryItemsOptions struct {
 	CollapseSeries bool
 }
 
+// CatalogListOptions selects one page from source-backed catalog list endpoints.
+type CatalogListOptions struct {
+	Limit    int
+	Page     int
+	Sort     string
+	Desc     bool
+	Filter   string
+	Include  []string
+	Minified bool
+}
+
+// MediaProgress is an ABS user's old-format media progress response.
+type MediaProgress struct {
+	ID                        string  `json:"id"`
+	UserID                    string  `json:"userId,omitempty"`
+	LibraryItemID             string  `json:"libraryItemId"`
+	EpisodeID                 string  `json:"episodeId,omitempty"`
+	MediaItemID               string  `json:"mediaItemId,omitempty"`
+	MediaItemType             string  `json:"mediaItemType,omitempty"`
+	Duration                  float64 `json:"duration,omitempty"`
+	Progress                  float64 `json:"progress"`
+	CurrentTime               float64 `json:"currentTime"`
+	IsFinished                bool    `json:"isFinished"`
+	HideFromContinueListening bool    `json:"hideFromContinueListening"`
+	EbookLocation             string  `json:"ebookLocation,omitempty"`
+	EbookProgress             float64 `json:"ebookProgress,omitempty"`
+	LastUpdate                int64   `json:"lastUpdate,omitempty"`
+	StartedAt                 int64   `json:"startedAt,omitempty"`
+	FinishedAt                int64   `json:"finishedAt,omitempty"`
+}
+
+// Bookmark is one user bookmark from the ABS current-user response.
+type Bookmark struct {
+	LibraryItemID string  `json:"libraryItemId"`
+	Time          float64 `json:"time"`
+	Title         string  `json:"title"`
+	CreatedAt     int64   `json:"createdAt,omitempty"`
+}
+
+// ProgressUpdatePayload is the source-verified body for current-user progress updates.
+type ProgressUpdatePayload struct {
+	Duration                  *float64 `json:"duration,omitempty"`
+	Progress                  *float64 `json:"progress,omitempty"`
+	CurrentTime               *float64 `json:"currentTime,omitempty"`
+	IsFinished                *bool    `json:"isFinished,omitempty"`
+	HideFromContinueListening *bool    `json:"hideFromContinueListening,omitempty"`
+	EbookLocation             *string  `json:"ebookLocation,omitempty"`
+	EbookProgress             *float64 `json:"ebookProgress,omitempty"`
+}
+
+// BookmarkPayload is the source-verified body for current-user bookmark mutations.
+type BookmarkPayload struct {
+	Time  float64 `json:"time"`
+	Title string  `json:"title"`
+}
+
+// ItemMetadataPayload is the source-verified body for item metadata updates.
+type ItemMetadataPayload struct {
+	Metadata *ItemMetadataFields `json:"metadata,omitempty"`
+	Tags     *[]string           `json:"tags,omitempty"`
+}
+
+// ItemMetadataFields is the typed allowlist accepted by abs_update_item_metadata.
+type ItemMetadataFields struct {
+	Title         *string                      `json:"title,omitempty"`
+	Subtitle      *string                      `json:"subtitle,omitempty"`
+	Author        *string                      `json:"author,omitempty"`
+	Description   *string                      `json:"description,omitempty"`
+	PublishedYear *string                      `json:"publishedYear,omitempty"`
+	PublishedDate *string                      `json:"publishedDate,omitempty"`
+	Publisher     *string                      `json:"publisher,omitempty"`
+	ISBN          *string                      `json:"isbn,omitempty"`
+	ASIN          *string                      `json:"asin,omitempty"`
+	Language      *string                      `json:"language,omitempty"`
+	ReleaseDate   *string                      `json:"releaseDate,omitempty"`
+	Explicit      *bool                        `json:"explicit,omitempty"`
+	Abridged      *bool                        `json:"abridged,omitempty"`
+	Narrators     *[]string                    `json:"narrators,omitempty"`
+	Genres        *[]string                    `json:"genres,omitempty"`
+	Authors       *[]ItemMetadataAuthorPayload `json:"authors,omitempty"`
+	Series        *[]ItemMetadataSeriesPayload `json:"series,omitempty"`
+}
+
+// ItemMetadataAuthorPayload is one ABS author update object.
+type ItemMetadataAuthorPayload struct {
+	Name string `json:"name"`
+}
+
+// ItemMetadataSeriesPayload is one ABS series update object.
+type ItemMetadataSeriesPayload struct {
+	Name     string `json:"name"`
+	Sequence string `json:"sequence,omitempty"`
+}
+
+// CollectionPayload is the source-verified body for collection create/update.
+type CollectionPayload struct {
+	LibraryID   string   `json:"libraryId,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Books       []string `json:"books,omitempty"`
+}
+
+// PlaylistItemPayload is one item body accepted by ABS playlist endpoints.
+type PlaylistItemPayload struct {
+	LibraryItemID string `json:"libraryItemId"`
+	EpisodeID     string `json:"episodeId,omitempty"`
+}
+
+// PlaylistPayload is the source-verified body for playlist create/update.
+type PlaylistPayload struct {
+	LibraryID   string                `json:"libraryId,omitempty"`
+	Name        string                `json:"name,omitempty"`
+	Description string                `json:"description,omitempty"`
+	Items       []PlaylistItemPayload `json:"items,omitempty"`
+}
+
 // ScanItemResponse is returned by the ABS item scan endpoint.
 type ScanItemResponse struct {
 	Result string `json:"result"`

@@ -64,7 +64,25 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 		t.Fatalf("expected abs_find_misorganized_items in tools: %#v", tools.Tools)
 	}
 	for _, toolName := range []string{
+		"abs_list_library_authors",
+		"abs_get_author",
+		"abs_list_library_series",
+		"abs_get_series",
+		"abs_list_collections",
+		"abs_get_collection",
+		"abs_get_items_in_progress",
+		"abs_get_item_progress",
+		"abs_list_bookmarks",
+	} {
+		if !toolNames(tools)[toolName] {
+			t.Fatalf("expected %s in tools: %#v", toolName, tools.Tools)
+		}
+	}
+	for _, toolName := range []string{
 		"abs_update_item_metadata",
+		"abs_update_item_progress",
+		"abs_create_bookmark",
+		"abs_update_bookmark",
 		"abs_update_item_cover",
 		"abs_remove_item_cover",
 		"abs_match_item",
@@ -227,6 +245,52 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	}
 	if statsResult.IsError {
 		t.Fatalf("abs_get_library_stats returned tool error: %#v", statsResult.Content)
+	}
+
+	authorsResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_list_library_authors",
+		Arguments: map[string]any{
+			"libraryId": "lib-audio",
+			"limit":     100,
+			"offset":    100,
+			"include":   []any{"items", "series"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_list_library_authors: %v", err)
+	}
+	if authorsResult.IsError {
+		t.Fatalf("abs_list_library_authors returned tool error: %#v", authorsResult.Content)
+	}
+	var authorsOutput CatalogListOutput
+	marshalStructuredOutput(t, authorsResult.StructuredContent, &authorsOutput)
+	if authorsOutput.Page != 1 || authorsOutput.Limit != 100 || authorsOutput.Data == nil {
+		t.Fatalf("unexpected authors output: %#v", authorsOutput)
+	}
+
+	for _, call := range []struct {
+		name string
+		args map[string]any
+	}{
+		{name: "abs_get_author", args: map[string]any{"id": "author-1", "include": []any{"items", "series"}}},
+		{name: "abs_list_library_series", args: map[string]any{"libraryId": "lib-audio", "limit": 25, "offset": 50}},
+		{name: "abs_get_series", args: map[string]any{"id": "series-1", "include": []any{"progress"}}},
+		{name: "abs_list_collections", args: map[string]any{}},
+		{name: "abs_get_collection", args: map[string]any{"id": "col-1", "include": []any{"items"}}},
+		{name: "abs_get_items_in_progress", args: map[string]any{"limit": 3}},
+		{name: "abs_get_item_progress", args: map[string]any{"itemId": "item-1"}},
+		{name: "abs_list_bookmarks", args: map[string]any{"itemId": "item-1"}},
+	} {
+		catalogResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+			Name:      call.name,
+			Arguments: call.args,
+		})
+		if err != nil {
+			t.Fatalf("call %s: %v", call.name, err)
+		}
+		if catalogResult.IsError {
+			t.Fatalf("%s returned tool error: %#v", call.name, catalogResult.Content)
+		}
 	}
 
 	scanResult, err := session.CallTool(ctx, &mcp.CallToolParams{
@@ -554,6 +618,215 @@ func TestMCPProtocolItemMutatingTools(t *testing.T) {
 		t.Fatalf("unexpected chapter update output: %#v", chaptersOutput)
 	}
 
+	metadataResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_update_item_metadata",
+		Arguments: map[string]any{
+			"itemId":      "item-1",
+			"title":       "Alice Updated",
+			"description": "Clean description",
+			"explicit":    true,
+			"authors":     []any{"Lewis Carroll"},
+			"series": []any{
+				map[string]any{"name": "Alice Books", "sequence": "1"},
+			},
+			"genres": []any{"fiction"},
+			"tags":   []any{"favorite"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_update_item_metadata: %v", err)
+	}
+	if metadataResult.IsError {
+		t.Fatalf("abs_update_item_metadata returned tool error: %s", contentText(metadataResult.Content))
+	}
+	var metadataOutput ItemMutationOutput
+	marshalStructuredOutput(t, metadataResult.StructuredContent, &metadataOutput)
+	if !metadataOutput.Triggered || metadataOutput.ItemID != "item-1" {
+		t.Fatalf("unexpected metadata update output: %#v", metadataOutput)
+	}
+
+	progressResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_update_item_progress",
+		Arguments: map[string]any{
+			"itemId":      "item-1",
+			"episodeId":   "episode-1",
+			"currentTime": 42.5,
+			"progress":    0.5,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_update_item_progress: %v", err)
+	}
+	if progressResult.IsError {
+		t.Fatalf("abs_update_item_progress returned tool error: %s", contentText(progressResult.Content))
+	}
+	var progressOutput ProgressMutationOutput
+	marshalStructuredOutput(t, progressResult.StructuredContent, &progressOutput)
+	if !progressOutput.Triggered || progressOutput.ItemID != "item-1" || progressOutput.EpisodeID != "episode-1" {
+		t.Fatalf("unexpected progress update output: %#v", progressOutput)
+	}
+
+	bookmarkResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_create_bookmark",
+		Arguments: map[string]any{
+			"itemId": "item-1",
+			"time":   12.5,
+			"title":  "Start",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_create_bookmark: %v", err)
+	}
+	if bookmarkResult.IsError {
+		t.Fatalf("abs_create_bookmark returned tool error: %s", contentText(bookmarkResult.Content))
+	}
+	var bookmarkOutput BookmarkMutationOutput
+	marshalStructuredOutput(t, bookmarkResult.StructuredContent, &bookmarkOutput)
+	if !bookmarkOutput.Triggered || bookmarkOutput.Bookmark.Title != "Start" {
+		t.Fatalf("unexpected bookmark output: %#v", bookmarkOutput)
+	}
+
+	updateBookmarkResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_update_bookmark",
+		Arguments: map[string]any{
+			"itemId": "item-1",
+			"time":   12.5,
+			"title":  "Updated",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_update_bookmark: %v", err)
+	}
+	if updateBookmarkResult.IsError {
+		t.Fatalf("abs_update_bookmark returned tool error: %s", contentText(updateBookmarkResult.Content))
+	}
+	var updateBookmarkOutput BookmarkMutationOutput
+	marshalStructuredOutput(t, updateBookmarkResult.StructuredContent, &updateBookmarkOutput)
+	if !updateBookmarkOutput.Triggered || updateBookmarkOutput.Bookmark.Title != "Updated" {
+		t.Fatalf("unexpected update bookmark output: %#v", updateBookmarkOutput)
+	}
+
+	createCollectionResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_create_collection",
+		Arguments: map[string]any{
+			"libraryId":   "lib-audio",
+			"name":        "Favorites",
+			"description": "Good books",
+			"itemIds":     []any{"item-1"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_create_collection: %v", err)
+	}
+	if createCollectionResult.IsError {
+		t.Fatalf("abs_create_collection returned tool error: %#v", createCollectionResult.Content)
+	}
+	var createCollectionOutput CatalogMutationOutput
+	marshalStructuredOutput(t, createCollectionResult.StructuredContent, &createCollectionOutput)
+	if !createCollectionOutput.Triggered || createCollectionOutput.ID != "col-1" {
+		t.Fatalf("unexpected create collection output: %#v", createCollectionOutput)
+	}
+
+	updateCollectionResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_update_collection",
+		Arguments: map[string]any{
+			"collectionId": "col-1",
+			"name":         "Updated favorites",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_update_collection: %v", err)
+	}
+	if updateCollectionResult.IsError {
+		t.Fatalf("abs_update_collection returned tool error: %#v", updateCollectionResult.Content)
+	}
+	var updateCollectionOutput CatalogMutationOutput
+	marshalStructuredOutput(t, updateCollectionResult.StructuredContent, &updateCollectionOutput)
+	if !updateCollectionOutput.Triggered || updateCollectionOutput.ID != "col-1" {
+		t.Fatalf("unexpected update collection output: %#v", updateCollectionOutput)
+	}
+
+	addCollectionResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_add_collection_item",
+		Arguments: map[string]any{
+			"collectionId": "col-1",
+			"itemId":       "item-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_add_collection_item: %v", err)
+	}
+	if addCollectionResult.IsError {
+		t.Fatalf("abs_add_collection_item returned tool error: %#v", addCollectionResult.Content)
+	}
+	var addCollectionOutput CatalogMutationOutput
+	marshalStructuredOutput(t, addCollectionResult.StructuredContent, &addCollectionOutput)
+	if !addCollectionOutput.Triggered || addCollectionOutput.ID != "col-1" {
+		t.Fatalf("unexpected add collection output: %#v", addCollectionOutput)
+	}
+
+	createPlaylistResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_create_playlist",
+		Arguments: map[string]any{
+			"libraryId":   "lib-audio",
+			"name":        "Queue",
+			"description": "Listen next",
+			"items": []any{
+				map[string]any{"itemId": "item-1", "episodeId": "episode-1"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_create_playlist: %v", err)
+	}
+	if createPlaylistResult.IsError {
+		t.Fatalf("abs_create_playlist returned tool error: %s", contentText(createPlaylistResult.Content))
+	}
+	var createPlaylistOutput CatalogMutationOutput
+	marshalStructuredOutput(t, createPlaylistResult.StructuredContent, &createPlaylistOutput)
+	if !createPlaylistOutput.Triggered || createPlaylistOutput.ID != "pl-1" {
+		t.Fatalf("unexpected create playlist output: %#v", createPlaylistOutput)
+	}
+
+	updatePlaylistResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_update_playlist",
+		Arguments: map[string]any{
+			"playlistId": "pl-1",
+			"name":       "Updated queue",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_update_playlist: %v", err)
+	}
+	if updatePlaylistResult.IsError {
+		t.Fatalf("abs_update_playlist returned tool error: %#v", updatePlaylistResult.Content)
+	}
+	var updatePlaylistOutput CatalogMutationOutput
+	marshalStructuredOutput(t, updatePlaylistResult.StructuredContent, &updatePlaylistOutput)
+	if !updatePlaylistOutput.Triggered || updatePlaylistOutput.ID != "pl-1" {
+		t.Fatalf("unexpected update playlist output: %#v", updatePlaylistOutput)
+	}
+
+	addPlaylistResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_add_playlist_item",
+		Arguments: map[string]any{
+			"playlistId": "pl-1",
+			"itemId":     "item-1",
+			"episodeId":  "episode-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_add_playlist_item: %v", err)
+	}
+	if addPlaylistResult.IsError {
+		t.Fatalf("abs_add_playlist_item returned tool error: %#v", addPlaylistResult.Content)
+	}
+	var addPlaylistOutput CatalogMutationOutput
+	marshalStructuredOutput(t, addPlaylistResult.StructuredContent, &addPlaylistOutput)
+	if !addPlaylistOutput.Triggered || addPlaylistOutput.ID != "pl-1" {
+		t.Fatalf("unexpected add playlist output: %#v", addPlaylistOutput)
+	}
+
 	removeResult, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "abs_remove_item_cover",
 		Arguments: map[string]any{
@@ -575,6 +848,9 @@ func TestMCPProtocolItemMutatingTools(t *testing.T) {
 
 	if fakeClient.updateItemCoverID != "item-1" || fakeClient.updateItemChaptersID != "item-1" || fakeClient.removeItemCoverID != "item-1" {
 		t.Fatalf("unexpected fake client calls: cover=%q chapters=%q remove=%q", fakeClient.updateItemCoverID, fakeClient.updateItemChaptersID, fakeClient.removeItemCoverID)
+	}
+	if fakeClient.addCollectionID != "col-1" || fakeClient.addPlaylistID != "pl-1" {
+		t.Fatalf("unexpected catalog mutation calls: collection=%q playlist=%q", fakeClient.addCollectionID, fakeClient.addPlaylistID)
 	}
 
 	if err := session.Close(); err != nil {
@@ -653,4 +929,14 @@ func protocolPromptText(t *testing.T, result *mcp.GetPromptResult) string {
 		t.Fatalf("prompt content type = %T, want *mcp.TextContent", result.Messages[0].Content)
 	}
 	return content.Text
+}
+
+func contentText(contents []mcp.Content) string {
+	parts := make([]string, 0, len(contents))
+	for _, content := range contents {
+		if text, ok := content.(*mcp.TextContent); ok {
+			parts = append(parts, text.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }

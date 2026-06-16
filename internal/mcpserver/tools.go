@@ -28,13 +28,32 @@ type ABSClient interface {
 	SearchLibrary(context.Context, string, string, int) (abs.JSONValue, error)
 	GetLibraryStats(context.Context, string) (abs.JSONValue, error)
 	GetLibraryFilterData(context.Context, string) (abs.JSONValue, error)
+	ListLibraryAuthors(context.Context, string, abs.CatalogListOptions) (abs.JSONValue, error)
+	GetAuthor(context.Context, string, []string) (abs.JSONValue, error)
+	ListLibrarySeries(context.Context, string, abs.CatalogListOptions) (abs.JSONValue, error)
+	GetSeries(context.Context, string, []string) (abs.JSONValue, error)
+	ListCollections(context.Context) (abs.JSONValue, error)
+	GetCollection(context.Context, string, []string) (abs.JSONValue, error)
+	GetItemsInProgress(context.Context, int) (abs.JSONValue, error)
+	GetItemProgress(context.Context, string, string) (*abs.MediaProgress, error)
+	ListBookmarks(context.Context) ([]abs.Bookmark, error)
+	UpdateItemProgress(context.Context, string, string, abs.ProgressUpdatePayload) error
+	CreateBookmark(context.Context, string, abs.BookmarkPayload) (*abs.Bookmark, error)
+	UpdateBookmark(context.Context, string, abs.BookmarkPayload) (*abs.Bookmark, error)
 	GetItemMetadataObject(context.Context, string) (abs.JSONValue, error)
+	UpdateItemMetadata(context.Context, string, abs.ItemMetadataPayload) (abs.JSONValue, error)
 	ScanLibrary(context.Context, string, bool) error
 	RemoveLibraryItemsWithIssues(context.Context, string) error
 	ScanItem(context.Context, string) (*abs.ScanItemResponse, error)
 	UpdateItemCover(context.Context, string, string) (abs.JSONValue, error)
 	RemoveItemCover(context.Context, string) error
 	UpdateItemChapters(context.Context, string, []abs.Chapter) (abs.JSONValue, error)
+	CreateCollection(context.Context, abs.CollectionPayload) (abs.JSONValue, error)
+	UpdateCollection(context.Context, string, abs.CollectionPayload) (abs.JSONValue, error)
+	AddCollectionItem(context.Context, string, string) (abs.JSONValue, error)
+	CreatePlaylist(context.Context, abs.PlaylistPayload) (abs.JSONValue, error)
+	UpdatePlaylist(context.Context, string, abs.PlaylistPayload) (abs.JSONValue, error)
+	AddPlaylistItem(context.Context, string, abs.PlaylistItemPayload) (abs.JSONValue, error)
 }
 
 // Server owns MCP tool handlers and their dependencies.
@@ -103,6 +122,66 @@ func (s *Server) MCPServer() *mcp.Server {
 		Description: "Get filter data for one Audiobookshelf library.",
 	}, s.GetLibraryFilterData)
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_list_library_authors",
+		Title:       "List Audiobookshelf library authors",
+		Description: "List a bounded source-backed page of authors from one Audiobookshelf library.",
+	}, s.ListLibraryAuthors)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_get_author",
+		Title:       "Get Audiobookshelf author",
+		Description: "Get one source-backed Audiobookshelf author object.",
+	}, s.GetAuthor)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_list_library_series",
+		Title:       "List Audiobookshelf library series",
+		Description: "List a bounded source-backed page of series from one Audiobookshelf library.",
+	}, s.ListLibrarySeries)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_get_series",
+		Title:       "Get Audiobookshelf series",
+		Description: "Get one source-backed Audiobookshelf series object.",
+	}, s.GetSeries)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_list_collections",
+		Title:       "List Audiobookshelf collections",
+		Description: "List collections visible to the authenticated Audiobookshelf user.",
+	}, s.ListCollections)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_get_collection",
+		Title:       "Get Audiobookshelf collection",
+		Description: "Get one source-backed Audiobookshelf collection object.",
+	}, s.GetCollection)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_get_items_in_progress",
+		Title:       "Get Audiobookshelf current-user items in progress",
+		Description: "Get source-backed items in progress for the configured Audiobookshelf user.",
+	}, s.GetItemsInProgress)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_get_item_progress",
+		Title:       "Get Audiobookshelf current-user item progress",
+		Description: "Get current-user progress for one Audiobookshelf library item or podcast episode.",
+	}, s.GetItemProgress)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_list_bookmarks",
+		Title:       "List Audiobookshelf current-user bookmarks",
+		Description: "List bookmarks for the configured Audiobookshelf user, optionally filtered by library item ID.",
+	}, s.ListBookmarks)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_update_item_progress",
+		Title:       "Update Audiobookshelf current-user item progress",
+		Description: "Create or update current-user progress for one Audiobookshelf library item or podcast episode. Blocked when ABS_READ_ONLY is true.",
+	}, s.UpdateItemProgress)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_create_bookmark",
+		Title:       "Create Audiobookshelf current-user bookmark",
+		Description: "Create one bookmark for the configured Audiobookshelf user. Blocked when ABS_READ_ONLY is true.",
+	}, s.CreateBookmark)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_update_bookmark",
+		Title:       "Update Audiobookshelf current-user bookmark",
+		Description: "Update one bookmark for the configured Audiobookshelf user. Blocked when ABS_READ_ONLY is true.",
+	}, s.UpdateBookmark)
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_get_item_metadata_object",
 		Title:       "Get Audiobookshelf item metadata object",
 		Description: "Get the raw ABS metadata object for one audiobook item. Requires sufficient ABS permissions.",
@@ -130,7 +209,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_update_item_metadata",
 		Title:       "Update Audiobookshelf item metadata",
-		Description: "Planned tool for updating selected metadata on one item. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until safe typed fields are source-verified.",
+		Description: "Update selected source-verified metadata fields on one item. Blocked when ABS_READ_ONLY is true.",
 	}, s.UpdateItemMetadata)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_update_item_cover",
@@ -160,12 +239,12 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_create_collection",
 		Title:       "Create Audiobookshelf collection",
-		Description: "Planned tool for creating a collection. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Create a collection with an initial source-verified item list. Blocked when ABS_READ_ONLY is true.",
 	}, s.CreateCollection)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_update_collection",
 		Title:       "Update Audiobookshelf collection",
-		Description: "Planned tool for updating a collection. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Update one collection name or description. Blocked when ABS_READ_ONLY is true.",
 	}, s.UpdateCollection)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_delete_collection",
@@ -175,7 +254,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_add_collection_item",
 		Title:       "Add Audiobookshelf collection item",
-		Description: "Planned tool for adding an item to a collection. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Add one library item to a collection. Blocked when ABS_READ_ONLY is true.",
 	}, s.AddCollectionItem)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_remove_collection_item",
@@ -185,12 +264,12 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_create_playlist",
 		Title:       "Create Audiobookshelf playlist",
-		Description: "Planned tool for creating a playlist. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Create a playlist with optional source-verified items. Blocked when ABS_READ_ONLY is true.",
 	}, s.CreatePlaylist)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_update_playlist",
 		Title:       "Update Audiobookshelf playlist",
-		Description: "Planned tool for updating a playlist. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Update one playlist name or description. Blocked when ABS_READ_ONLY is true.",
 	}, s.UpdatePlaylist)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_delete_playlist",
@@ -200,7 +279,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_add_playlist_item",
 		Title:       "Add Audiobookshelf playlist item",
-		Description: "Planned tool for adding an item to a playlist. Registered for discovery, blocked when ABS_READ_ONLY is true, and not implemented until source and fixture behavior are verified.",
+		Description: "Add one library item or podcast episode to a playlist. Blocked when ABS_READ_ONLY is true.",
 	}, s.AddPlaylistItem)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_remove_playlist_item",
@@ -328,6 +407,128 @@ type LibraryRawOutput struct {
 	Data      abs.JSONValue `json:"data" jsonschema:"Raw Audiobookshelf response."`
 }
 
+// CatalogListInput selects a bounded page from source-backed catalog endpoints.
+type CatalogListInput struct {
+	LibraryID string   `json:"libraryId" jsonschema:"Audiobookshelf library ID."`
+	Limit     int      `json:"limit,omitempty" jsonschema:"Maximum number of catalog records to return. Defaults to 25 and is capped at 100."`
+	Offset    int      `json:"offset,omitempty" jsonschema:"Zero-based catalog offset. Must be a multiple of limit because ABS uses page-based pagination."`
+	Sort      string   `json:"sort,omitempty" jsonschema:"ABS catalog sort key."`
+	Desc      bool     `json:"desc,omitempty" jsonschema:"Whether to sort descending."`
+	Filter    string   `json:"filter,omitempty" jsonschema:"ABS catalog filter expression."`
+	Include   []string `json:"include,omitempty" jsonschema:"Optional ABS include values to request."`
+	Minified  bool     `json:"minified,omitempty" jsonschema:"Whether to request minified ABS catalog records."`
+}
+
+// CatalogListOutput is returned by source-backed catalog list tools.
+type CatalogListOutput struct {
+	LibraryID string        `json:"libraryId"`
+	Limit     int           `json:"limit"`
+	Offset    int           `json:"offset"`
+	Page      int           `json:"page"`
+	Sort      string        `json:"sort,omitempty"`
+	Desc      bool          `json:"desc,omitempty"`
+	Filter    string        `json:"filter,omitempty"`
+	Include   []string      `json:"include,omitempty"`
+	Minified  bool          `json:"minified,omitempty"`
+	Data      abs.JSONValue `json:"data" jsonschema:"Raw Audiobookshelf catalog response."`
+}
+
+// EntityInput identifies one source-backed entity with optional include values.
+type EntityInput struct {
+	ID      string   `json:"id" jsonschema:"Audiobookshelf entity ID."`
+	Include []string `json:"include,omitempty" jsonschema:"Optional ABS include values to request."`
+}
+
+// EntityOutput is returned by source-backed entity read tools.
+type EntityOutput struct {
+	ID      string        `json:"id"`
+	Include []string      `json:"include,omitempty"`
+	Data    abs.JSONValue `json:"data" jsonschema:"Raw Audiobookshelf entity response."`
+}
+
+// RawOutput is returned by read-only tools that do not require input.
+type RawOutput struct {
+	Data abs.JSONValue `json:"data" jsonschema:"Raw Audiobookshelf response."`
+}
+
+// ItemsInProgressInput selects current-user items in progress.
+type ItemsInProgressInput struct {
+	Limit int `json:"limit,omitempty" jsonschema:"Maximum number of items in progress to return. Defaults to 25 and is capped at 100."`
+}
+
+// UserProgressScope describes which Audiobookshelf user's progress is represented.
+type UserProgressScope struct {
+	Scope  string `json:"scope" jsonschema:"Progress scope. Current-user tools always return currentUser."`
+	UserID string `json:"userId,omitempty" jsonschema:"Audiobookshelf user ID returned by ABS when present."`
+}
+
+// ItemsInProgressOutput is returned by abs_get_items_in_progress.
+type ItemsInProgressOutput struct {
+	Limit int               `json:"limit" jsonschema:"Normalized maximum number of current-user items requested."`
+	User  UserProgressScope `json:"user" jsonschema:"Audiobookshelf user scope for the returned progress data."`
+	Data  abs.JSONValue     `json:"data" jsonschema:"Raw Audiobookshelf current-user items-in-progress response."`
+}
+
+// ItemProgressInput identifies current-user progress for one item or episode.
+type ItemProgressInput struct {
+	ItemID    string `json:"itemId" jsonschema:"Audiobookshelf library item ID."`
+	EpisodeID string `json:"episodeId,omitempty" jsonschema:"Optional podcast episode ID."`
+}
+
+// ItemProgressOutput is returned by abs_get_item_progress.
+type ItemProgressOutput struct {
+	ItemID    string            `json:"itemId" jsonschema:"Audiobookshelf library item ID requested."`
+	EpisodeID string            `json:"episodeId,omitempty" jsonschema:"Podcast episode ID requested, when present."`
+	User      UserProgressScope `json:"user" jsonschema:"Audiobookshelf user scope for this progress object."`
+	Progress  abs.MediaProgress `json:"progress" jsonschema:"Current-user Audiobookshelf progress object."`
+}
+
+// BookmarksInput filters current-user bookmarks.
+type BookmarksInput struct {
+	ItemID string `json:"itemId,omitempty" jsonschema:"Optional Audiobookshelf library item ID to filter bookmarks."`
+}
+
+// BookmarksOutput is returned by abs_list_bookmarks.
+type BookmarksOutput struct {
+	ItemID    string         `json:"itemId,omitempty" jsonschema:"Library item ID used to filter bookmarks, when present."`
+	Bookmarks []abs.Bookmark `json:"bookmarks" jsonschema:"Current-user Audiobookshelf bookmarks."`
+	Count     int            `json:"count" jsonschema:"Number of bookmarks returned."`
+}
+
+// UpdateItemProgressInput identifies a current-user progress update.
+type UpdateItemProgressInput struct {
+	ItemID                    string   `json:"itemId" jsonschema:"Audiobookshelf library item ID."`
+	EpisodeID                 string   `json:"episodeId,omitempty" jsonschema:"Optional podcast episode ID."`
+	Duration                  *float64 `json:"duration,omitempty" jsonschema:"Media duration in seconds."`
+	Progress                  *float64 `json:"progress,omitempty" jsonschema:"Progress ratio from 0 to 1."`
+	CurrentTime               *float64 `json:"currentTime,omitempty" jsonschema:"Current playback time in seconds."`
+	IsFinished                *bool    `json:"isFinished,omitempty" jsonschema:"Whether the item is finished."`
+	HideFromContinueListening *bool    `json:"hideFromContinueListening,omitempty" jsonschema:"Whether to hide this progress from continue listening."`
+	EbookLocation             *string  `json:"ebookLocation,omitempty" jsonschema:"Ebook location marker."`
+	EbookProgress             *float64 `json:"ebookProgress,omitempty" jsonschema:"Ebook progress ratio from 0 to 1."`
+}
+
+// ProgressMutationOutput is returned by abs_update_item_progress.
+type ProgressMutationOutput struct {
+	Triggered bool   `json:"triggered" jsonschema:"Whether an Audiobookshelf progress request was sent."`
+	ItemID    string `json:"itemId" jsonschema:"Audiobookshelf library item ID requested."`
+	EpisodeID string `json:"episodeId,omitempty" jsonschema:"Podcast episode ID requested, when present."`
+}
+
+// BookmarkMutationInput identifies one current-user bookmark create/update.
+type BookmarkMutationInput struct {
+	ItemID string  `json:"itemId" jsonschema:"Audiobookshelf library item ID."`
+	Time   float64 `json:"time" jsonschema:"Bookmark time in seconds."`
+	Title  string  `json:"title" jsonschema:"Bookmark title."`
+}
+
+// BookmarkMutationOutput is returned by bookmark mutation tools.
+type BookmarkMutationOutput struct {
+	Triggered bool         `json:"triggered" jsonschema:"Whether an Audiobookshelf bookmark request was sent."`
+	ItemID    string       `json:"itemId" jsonschema:"Audiobookshelf library item ID requested."`
+	Bookmark  abs.Bookmark `json:"bookmark" jsonschema:"Audiobookshelf bookmark returned by ABS."`
+}
+
 // MetadataObjectOutput is returned by abs_get_item_metadata_object.
 type MetadataObjectOutput struct {
 	ItemID string        `json:"itemId"`
@@ -448,6 +649,35 @@ type ItemPayloadInput struct {
 	Payload abs.JSONValue `json:"payload,omitempty" jsonschema:"Planned mutation payload. Exact shape is not committed until source and fixture behavior are verified."`
 }
 
+// UpdateItemMetadataInput identifies one typed item metadata update request.
+type UpdateItemMetadataInput struct {
+	ItemID        string                `json:"itemId" jsonschema:"Audiobookshelf library item ID to mutate."`
+	Title         *string               `json:"title,omitempty" jsonschema:"Book or podcast title."`
+	Subtitle      *string               `json:"subtitle,omitempty" jsonschema:"Book subtitle."`
+	Author        *string               `json:"author,omitempty" jsonschema:"Podcast author field."`
+	Description   *string               `json:"description,omitempty" jsonschema:"Book or podcast description. Empty string clears the field."`
+	PublishedYear *string               `json:"publishedYear,omitempty" jsonschema:"Book published year."`
+	PublishedDate *string               `json:"publishedDate,omitempty" jsonschema:"Book published date."`
+	Publisher     *string               `json:"publisher,omitempty" jsonschema:"Book publisher."`
+	ISBN          *string               `json:"isbn,omitempty" jsonschema:"Book ISBN."`
+	ASIN          *string               `json:"asin,omitempty" jsonschema:"Book ASIN."`
+	Language      *string               `json:"language,omitempty" jsonschema:"Book or podcast language."`
+	ReleaseDate   *string               `json:"releaseDate,omitempty" jsonschema:"Podcast release date."`
+	Explicit      *bool                 `json:"explicit,omitempty" jsonschema:"Explicit content flag."`
+	Abridged      *bool                 `json:"abridged,omitempty" jsonschema:"Book abridged flag."`
+	Narrators     []string              `json:"narrators,omitempty" jsonschema:"Book narrator names. Empty array clears narrators."`
+	Genres        []string              `json:"genres,omitempty" jsonschema:"Genre names. Empty array clears genres."`
+	Tags          []string              `json:"tags,omitempty" jsonschema:"Item tags. Empty array clears tags."`
+	Authors       []string              `json:"authors,omitempty" jsonschema:"Book author names. Empty array clears author links."`
+	Series        []SeriesMetadataInput `json:"series,omitempty" jsonschema:"Book series entries. Empty array clears series links."`
+}
+
+// SeriesMetadataInput identifies one book series metadata update entry.
+type SeriesMetadataInput struct {
+	Name     string `json:"name" jsonschema:"Series name."`
+	Sequence string `json:"sequence,omitempty" jsonschema:"Optional book sequence in the series."`
+}
+
 // ConfirmedItemInput identifies one destructive item mutation.
 type ConfirmedItemInput struct {
 	ItemID       string `json:"itemId" jsonschema:"Audiobookshelf library item ID to mutate."`
@@ -482,11 +712,13 @@ type MatchItemInput struct {
 	Confirmation string        `json:"confirmation,omitempty" jsonschema:"Reserved for source-verified overwrite confirmation if matching is destructive."`
 }
 
-// CollectionInput identifies one planned collection create/update request.
+// CollectionInput identifies one collection create/update request.
 type CollectionInput struct {
-	CollectionID string        `json:"collectionId,omitempty" jsonschema:"Audiobookshelf collection ID for updates."`
-	Name         string        `json:"name,omitempty" jsonschema:"Collection name."`
-	Payload      abs.JSONValue `json:"payload,omitempty" jsonschema:"Planned collection payload. Exact shape is not committed until source and fixture behavior are verified."`
+	CollectionID string   `json:"collectionId,omitempty" jsonschema:"Audiobookshelf collection ID for updates."`
+	LibraryID    string   `json:"libraryId,omitempty" jsonschema:"Audiobookshelf library ID for collection creation."`
+	Name         string   `json:"name,omitempty" jsonschema:"Collection name."`
+	Description  string   `json:"description,omitempty" jsonschema:"Collection description."`
+	ItemIDs      []string `json:"itemIds,omitempty" jsonschema:"Audiobookshelf library item IDs for collection creation."`
 }
 
 // ConfirmedCollectionInput identifies one planned destructive collection request.
@@ -502,11 +734,13 @@ type CollectionItemInput struct {
 	Confirmation string `json:"confirmation,omitempty" jsonschema:"Exact confirmation text required for removal."`
 }
 
-// PlaylistInput identifies one planned playlist create/update request.
+// PlaylistInput identifies one playlist create/update request.
 type PlaylistInput struct {
-	PlaylistID string        `json:"playlistId,omitempty" jsonschema:"Audiobookshelf playlist ID for updates."`
-	Name       string        `json:"name,omitempty" jsonschema:"Playlist name."`
-	Payload    abs.JSONValue `json:"payload,omitempty" jsonschema:"Planned playlist payload. Exact shape is not committed until source and fixture behavior are verified."`
+	PlaylistID  string                    `json:"playlistId,omitempty" jsonschema:"Audiobookshelf playlist ID for updates."`
+	LibraryID   string                    `json:"libraryId,omitempty" jsonschema:"Audiobookshelf library ID for playlist creation."`
+	Name        string                    `json:"name,omitempty" jsonschema:"Playlist name."`
+	Description string                    `json:"description,omitempty" jsonschema:"Playlist description."`
+	Items       []PlaylistCreateItemInput `json:"items,omitempty" jsonschema:"Optional initial playlist items."`
 }
 
 // ConfirmedPlaylistInput identifies one planned destructive playlist request.
@@ -523,6 +757,12 @@ type PlaylistItemInput struct {
 	Confirmation string `json:"confirmation,omitempty" jsonschema:"Exact confirmation text required for removal."`
 }
 
+// PlaylistCreateItemInput identifies one optional initial playlist item.
+type PlaylistCreateItemInput struct {
+	ItemID    string `json:"itemId" jsonschema:"Audiobookshelf library item ID to add."`
+	EpisodeID string `json:"episodeId,omitempty" jsonschema:"Optional podcast episode ID when adding a podcast playlist item."`
+}
+
 // PlannedMutationOutput is reserved for future implemented mutating tools.
 type PlannedMutationOutput struct {
 	Triggered   bool   `json:"triggered" jsonschema:"Whether an Audiobookshelf mutation request was sent."`
@@ -535,6 +775,13 @@ type PlannedMutationOutput struct {
 type ItemMutationOutput struct {
 	Triggered bool          `json:"triggered" jsonschema:"Whether an Audiobookshelf mutation request was sent."`
 	ItemID    string        `json:"itemId" jsonschema:"Audiobookshelf library item ID requested for mutation."`
+	Data      abs.JSONValue `json:"data,omitempty" jsonschema:"Raw Audiobookshelf response, when returned by ABS."`
+}
+
+// CatalogMutationOutput is returned by collection and playlist mutation tools.
+type CatalogMutationOutput struct {
+	Triggered bool          `json:"triggered" jsonschema:"Whether an Audiobookshelf mutation request was sent."`
+	ID        string        `json:"id,omitempty" jsonschema:"Audiobookshelf collection or playlist ID returned by ABS, when available."`
 	Data      abs.JSONValue `json:"data,omitempty" jsonschema:"Raw Audiobookshelf response, when returned by ABS."`
 }
 
@@ -766,6 +1013,233 @@ func (s *Server) GetLibraryFilterData(
 		return nil, LibraryRawOutput{}, fmt.Errorf("get ABS library %q filter data: %w", input.LibraryID, err)
 	}
 	return nil, LibraryRawOutput{LibraryID: input.LibraryID, Data: data}, nil
+}
+
+// ListLibraryAuthors returns a bounded page of source-backed ABS authors.
+func (s *Server) ListLibraryAuthors(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input CatalogListInput,
+) (*mcp.CallToolResult, CatalogListOutput, error) {
+	options, output, err := catalogListRequest(input)
+	if err != nil {
+		return nil, CatalogListOutput{}, err
+	}
+	data, err := s.client.ListLibraryAuthors(ctx, input.LibraryID, options)
+	if err != nil {
+		return nil, CatalogListOutput{}, fmt.Errorf("list ABS library %q authors: %w", input.LibraryID, err)
+	}
+	output.Data = data
+	return nil, output, nil
+}
+
+// GetAuthor returns one source-backed ABS author.
+func (s *Server) GetAuthor(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input EntityInput,
+) (*mcp.CallToolResult, EntityOutput, error) {
+	include, output, err := entityRequest(input)
+	if err != nil {
+		return nil, EntityOutput{}, err
+	}
+	data, err := s.client.GetAuthor(ctx, input.ID, include)
+	if err != nil {
+		return nil, EntityOutput{}, fmt.Errorf("get ABS author %q: %w", input.ID, err)
+	}
+	output.Data = data
+	return nil, output, nil
+}
+
+// ListLibrarySeries returns a bounded page of source-backed ABS series.
+func (s *Server) ListLibrarySeries(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input CatalogListInput,
+) (*mcp.CallToolResult, CatalogListOutput, error) {
+	options, output, err := catalogListRequest(input)
+	if err != nil {
+		return nil, CatalogListOutput{}, err
+	}
+	data, err := s.client.ListLibrarySeries(ctx, input.LibraryID, options)
+	if err != nil {
+		return nil, CatalogListOutput{}, fmt.Errorf("list ABS library %q series: %w", input.LibraryID, err)
+	}
+	output.Data = data
+	return nil, output, nil
+}
+
+// GetSeries returns one source-backed ABS series.
+func (s *Server) GetSeries(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input EntityInput,
+) (*mcp.CallToolResult, EntityOutput, error) {
+	include, output, err := entityRequest(input)
+	if err != nil {
+		return nil, EntityOutput{}, err
+	}
+	data, err := s.client.GetSeries(ctx, input.ID, include)
+	if err != nil {
+		return nil, EntityOutput{}, fmt.Errorf("get ABS series %q: %w", input.ID, err)
+	}
+	output.Data = data
+	return nil, output, nil
+}
+
+// ListCollections returns collections visible to the authenticated ABS user.
+func (s *Server) ListCollections(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	_ EmptyInput,
+) (*mcp.CallToolResult, RawOutput, error) {
+	data, err := s.client.ListCollections(ctx)
+	if err != nil {
+		return nil, RawOutput{}, fmt.Errorf("list ABS collections: %w", err)
+	}
+	return nil, RawOutput{Data: data}, nil
+}
+
+// GetCollection returns one source-backed ABS collection.
+func (s *Server) GetCollection(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input EntityInput,
+) (*mcp.CallToolResult, EntityOutput, error) {
+	include, output, err := entityRequest(input)
+	if err != nil {
+		return nil, EntityOutput{}, err
+	}
+	data, err := s.client.GetCollection(ctx, input.ID, include)
+	if err != nil {
+		return nil, EntityOutput{}, fmt.Errorf("get ABS collection %q: %w", input.ID, err)
+	}
+	output.Data = data
+	return nil, output, nil
+}
+
+// GetItemsInProgress returns current-user items in progress.
+func (s *Server) GetItemsInProgress(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input ItemsInProgressInput,
+) (*mcp.CallToolResult, ItemsInProgressOutput, error) {
+	limit, err := normalizeLimit(input.Limit)
+	if err != nil {
+		return nil, ItemsInProgressOutput{}, err
+	}
+	data, err := s.client.GetItemsInProgress(ctx, limit)
+	if err != nil {
+		return nil, ItemsInProgressOutput{}, fmt.Errorf("get ABS current-user items in progress: %w", err)
+	}
+	return nil, ItemsInProgressOutput{Limit: limit, User: currentUserProgressScope(""), Data: data}, nil
+}
+
+// GetItemProgress returns current-user progress for one item or episode.
+func (s *Server) GetItemProgress(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input ItemProgressInput,
+) (*mcp.CallToolResult, ItemProgressOutput, error) {
+	if input.ItemID == "" {
+		return nil, ItemProgressOutput{}, fmt.Errorf("itemId is required")
+	}
+	progress, err := s.client.GetItemProgress(ctx, input.ItemID, input.EpisodeID)
+	if err != nil {
+		return nil, ItemProgressOutput{}, fmt.Errorf("get ABS current-user progress for item %q: %w", input.ItemID, err)
+	}
+	return nil, ItemProgressOutput{
+		ItemID:    input.ItemID,
+		EpisodeID: input.EpisodeID,
+		User:      currentUserProgressScope(progress.UserID),
+		Progress:  *progress,
+	}, nil
+}
+
+// ListBookmarks returns current-user bookmarks, optionally filtered by item ID.
+func (s *Server) ListBookmarks(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input BookmarksInput,
+) (*mcp.CallToolResult, BookmarksOutput, error) {
+	bookmarks, err := s.client.ListBookmarks(ctx)
+	if err != nil {
+		return nil, BookmarksOutput{}, fmt.Errorf("list ABS current-user bookmarks: %w", err)
+	}
+	if input.ItemID != "" {
+		filtered := make([]abs.Bookmark, 0, len(bookmarks))
+		for _, bookmark := range bookmarks {
+			if bookmark.LibraryItemID == input.ItemID {
+				filtered = append(filtered, bookmark)
+			}
+		}
+		bookmarks = filtered
+	}
+	return nil, BookmarksOutput{ItemID: input.ItemID, Bookmarks: bookmarks, Count: len(bookmarks)}, nil
+}
+
+// UpdateItemProgress creates or updates current-user progress for one item or episode.
+func (s *Server) UpdateItemProgress(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input UpdateItemProgressInput,
+) (*mcp.CallToolResult, ProgressMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_update_item_progress"); err != nil {
+		return nil, ProgressMutationOutput{}, err
+	}
+	itemID := strings.TrimSpace(input.ItemID)
+	episodeID := strings.TrimSpace(input.EpisodeID)
+	if itemID == "" {
+		return nil, ProgressMutationOutput{}, fmt.Errorf("itemId is required")
+	}
+	payload, err := buildProgressUpdatePayload(input)
+	if err != nil {
+		return nil, ProgressMutationOutput{}, err
+	}
+	if err := s.client.UpdateItemProgress(ctx, itemID, episodeID, payload); err != nil {
+		return nil, ProgressMutationOutput{}, fmt.Errorf("update ABS current-user progress for item %q: %w", itemID, err)
+	}
+	return nil, ProgressMutationOutput{Triggered: true, ItemID: itemID, EpisodeID: episodeID}, nil
+}
+
+// CreateBookmark creates one current-user bookmark.
+func (s *Server) CreateBookmark(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input BookmarkMutationInput,
+) (*mcp.CallToolResult, BookmarkMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_create_bookmark"); err != nil {
+		return nil, BookmarkMutationOutput{}, err
+	}
+	itemID, payload, err := buildBookmarkPayload(input)
+	if err != nil {
+		return nil, BookmarkMutationOutput{}, err
+	}
+	bookmark, err := s.client.CreateBookmark(ctx, itemID, payload)
+	if err != nil {
+		return nil, BookmarkMutationOutput{}, fmt.Errorf("create ABS current-user bookmark for item %q: %w", itemID, err)
+	}
+	return nil, BookmarkMutationOutput{Triggered: true, ItemID: itemID, Bookmark: *bookmark}, nil
+}
+
+// UpdateBookmark updates one current-user bookmark.
+func (s *Server) UpdateBookmark(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input BookmarkMutationInput,
+) (*mcp.CallToolResult, BookmarkMutationOutput, error) {
+	if err := s.requireMutatingTool("abs_update_bookmark"); err != nil {
+		return nil, BookmarkMutationOutput{}, err
+	}
+	itemID, payload, err := buildBookmarkPayload(input)
+	if err != nil {
+		return nil, BookmarkMutationOutput{}, err
+	}
+	bookmark, err := s.client.UpdateBookmark(ctx, itemID, payload)
+	if err != nil {
+		return nil, BookmarkMutationOutput{}, fmt.Errorf("update ABS current-user bookmark for item %q: %w", itemID, err)
+	}
+	return nil, BookmarkMutationOutput{Triggered: true, ItemID: itemID, Bookmark: *bookmark}, nil
 }
 
 // GetItemMetadataObject returns the raw ABS metadata object for one item.
@@ -1014,19 +1488,28 @@ func (s *Server) ScanItem(
 	}, nil
 }
 
-// UpdateItemMetadata is a planned metadata mutation tool gated by read-only mode.
+// UpdateItemMetadata updates selected source-verified metadata fields.
 func (s *Server) UpdateItemMetadata(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
-	input ItemPayloadInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+	input UpdateItemMetadataInput,
+) (*mcp.CallToolResult, ItemMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_update_item_metadata"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, ItemMutationOutput{}, err
 	}
-	if input.ItemID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	itemID := strings.TrimSpace(input.ItemID)
+	if itemID == "" {
+		return nil, ItemMutationOutput{}, fmt.Errorf("itemId is required")
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_item_metadata", "PATCH /api/items/:id/media")
+	payload, err := buildItemMetadataPayload(input)
+	if err != nil {
+		return nil, ItemMutationOutput{}, err
+	}
+	data, err := s.client.UpdateItemMetadata(ctx, itemID, payload)
+	if err != nil {
+		return nil, ItemMutationOutput{}, fmt.Errorf("update ABS item %q metadata: %w", itemID, err)
+	}
+	return nil, ItemMutationOutput{Triggered: true, ItemID: itemID, Data: data}, nil
 }
 
 // UpdateItemCover updates an item cover from an ABS-visible path.
@@ -1145,34 +1628,69 @@ func (s *Server) UpdateItemTracks(
 	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_item_tracks", "PATCH /api/items/:id/tracks")
 }
 
-// CreateCollection is a planned collection mutation tool gated by read-only mode.
+// CreateCollection creates one collection with an initial item list.
 func (s *Server) CreateCollection(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input CollectionInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_create_collection"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.Name == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("name is required")
+	libraryID := strings.TrimSpace(input.LibraryID)
+	name := strings.TrimSpace(input.Name)
+	description := strings.TrimSpace(input.Description)
+	if libraryID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("libraryId is required")
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_create_collection", "POST /api/collections")
+	if name == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("name is required")
+	}
+	itemIDs, err := normalizeRequiredIDs(input.ItemIDs, "itemIds")
+	if err != nil {
+		return nil, CatalogMutationOutput{}, err
+	}
+	payload := abs.CollectionPayload{
+		LibraryID:   libraryID,
+		Name:        name,
+		Description: description,
+		Books:       itemIDs,
+	}
+	data, err := s.client.CreateCollection(ctx, payload)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("create ABS collection: %w", err)
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: jsonValueID(data), Data: data}, nil
 }
 
-// UpdateCollection is a planned collection mutation tool gated by read-only mode.
+// UpdateCollection updates one collection's non-membership fields.
 func (s *Server) UpdateCollection(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input CollectionInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_update_collection"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.CollectionID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("collectionId is required")
+	collectionID := strings.TrimSpace(input.CollectionID)
+	name := strings.TrimSpace(input.Name)
+	description := strings.TrimSpace(input.Description)
+	if collectionID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("collectionId is required")
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_collection", "PATCH /api/collections/:id")
+	if name == "" && description == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("name or description is required")
+	}
+	payload := abs.CollectionPayload{Name: name, Description: description}
+	data, err := s.client.UpdateCollection(ctx, collectionID, payload)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("update ABS collection %q: %w", collectionID, err)
+	}
+	id := jsonValueID(data)
+	if id == "" {
+		id = collectionID
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
 // DeleteCollection is a planned destructive collection mutation tool gated by read-only mode.
@@ -1194,22 +1712,32 @@ func (s *Server) DeleteCollection(
 	return nil, PlannedMutationOutput{}, plannedToolError("abs_delete_collection", "DELETE /api/collections/:id")
 }
 
-// AddCollectionItem is a planned collection membership tool gated by read-only mode.
+// AddCollectionItem adds one item to a collection.
 func (s *Server) AddCollectionItem(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input CollectionItemInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_add_collection_item"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.CollectionID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("collectionId is required")
+	collectionID := strings.TrimSpace(input.CollectionID)
+	itemID := strings.TrimSpace(input.ItemID)
+	if collectionID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("collectionId is required")
 	}
-	if input.ItemID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	if itemID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("itemId is required")
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_add_collection_item", "POST /api/collections/:id/book")
+	data, err := s.client.AddCollectionItem(ctx, collectionID, itemID)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("add ABS collection %q item %q: %w", collectionID, itemID, err)
+	}
+	id := jsonValueID(data)
+	if id == "" {
+		id = collectionID
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
 // RemoveCollectionItem is a planned destructive collection membership tool gated by read-only mode.
@@ -1234,34 +1762,69 @@ func (s *Server) RemoveCollectionItem(
 	return nil, PlannedMutationOutput{}, plannedToolError("abs_remove_collection_item", "DELETE /api/collections/:id/book/:bookId")
 }
 
-// CreatePlaylist is a planned playlist mutation tool gated by read-only mode.
+// CreatePlaylist creates one playlist.
 func (s *Server) CreatePlaylist(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input PlaylistInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_create_playlist"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.Name == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("name is required")
+	libraryID := strings.TrimSpace(input.LibraryID)
+	name := strings.TrimSpace(input.Name)
+	description := strings.TrimSpace(input.Description)
+	if libraryID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("libraryId is required")
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_create_playlist", "POST /api/playlists")
+	if name == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("name is required")
+	}
+	items, err := normalizePlaylistItems(input.Items)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, err
+	}
+	payload := abs.PlaylistPayload{
+		LibraryID:   libraryID,
+		Name:        name,
+		Description: description,
+		Items:       items,
+	}
+	data, err := s.client.CreatePlaylist(ctx, payload)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("create ABS playlist: %w", err)
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: jsonValueID(data), Data: data}, nil
 }
 
-// UpdatePlaylist is a planned playlist mutation tool gated by read-only mode.
+// UpdatePlaylist updates one playlist's non-membership fields.
 func (s *Server) UpdatePlaylist(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input PlaylistInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_update_playlist"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.PlaylistID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("playlistId is required")
+	playlistID := strings.TrimSpace(input.PlaylistID)
+	name := strings.TrimSpace(input.Name)
+	description := strings.TrimSpace(input.Description)
+	if playlistID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("playlistId is required")
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_update_playlist", "PATCH /api/playlists/:id")
+	if name == "" && description == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("name or description is required")
+	}
+	payload := abs.PlaylistPayload{Name: name, Description: description}
+	data, err := s.client.UpdatePlaylist(ctx, playlistID, payload)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("update ABS playlist %q: %w", playlistID, err)
+	}
+	id := jsonValueID(data)
+	if id == "" {
+		id = playlistID
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
 // DeletePlaylist is a planned destructive playlist mutation tool gated by read-only mode.
@@ -1283,22 +1846,36 @@ func (s *Server) DeletePlaylist(
 	return nil, PlannedMutationOutput{}, plannedToolError("abs_delete_playlist", "DELETE /api/playlists/:id")
 }
 
-// AddPlaylistItem is a planned playlist membership tool gated by read-only mode.
+// AddPlaylistItem adds one item or episode to a playlist.
 func (s *Server) AddPlaylistItem(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input PlaylistItemInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_add_playlist_item"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.PlaylistID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("playlistId is required")
+	playlistID := strings.TrimSpace(input.PlaylistID)
+	itemID := strings.TrimSpace(input.ItemID)
+	if playlistID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("playlistId is required")
 	}
-	if input.ItemID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	if itemID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("itemId is required")
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_add_playlist_item", "POST /api/playlists/:id/item")
+	payload := abs.PlaylistItemPayload{
+		LibraryItemID: itemID,
+		EpisodeID:     strings.TrimSpace(input.EpisodeID),
+	}
+	data, err := s.client.AddPlaylistItem(ctx, playlistID, payload)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("add ABS playlist %q item %q: %w", playlistID, itemID, err)
+	}
+	id := jsonValueID(data)
+	if id == "" {
+		id = playlistID
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
 // RemovePlaylistItem is a planned destructive playlist membership tool gated by read-only mode.
@@ -1336,6 +1913,282 @@ func readOnlyToolError(toolName string) error {
 
 func plannedToolError(toolName string, route string) error {
 	return fmt.Errorf("%s is registered but not implemented yet; planned ABS route %s requires source and fixture verification before this MCP server will mutate Audiobookshelf", toolName, route)
+}
+
+func buildProgressUpdatePayload(input UpdateItemProgressInput) (abs.ProgressUpdatePayload, error) {
+	payload := abs.ProgressUpdatePayload{
+		Duration:                  input.Duration,
+		Progress:                  input.Progress,
+		CurrentTime:               input.CurrentTime,
+		IsFinished:                input.IsFinished,
+		HideFromContinueListening: input.HideFromContinueListening,
+		EbookProgress:             input.EbookProgress,
+	}
+	if input.EbookLocation != nil {
+		location := strings.TrimSpace(*input.EbookLocation)
+		payload.EbookLocation = &location
+	}
+	if payload.Duration == nil &&
+		payload.Progress == nil &&
+		payload.CurrentTime == nil &&
+		payload.IsFinished == nil &&
+		payload.HideFromContinueListening == nil &&
+		payload.EbookLocation == nil &&
+		payload.EbookProgress == nil {
+		return abs.ProgressUpdatePayload{}, fmt.Errorf("at least one progress field is required")
+	}
+	if err := validateNonNegativeFloat(payload.Duration, "duration"); err != nil {
+		return abs.ProgressUpdatePayload{}, err
+	}
+	if err := validateNonNegativeFloat(payload.CurrentTime, "currentTime"); err != nil {
+		return abs.ProgressUpdatePayload{}, err
+	}
+	if err := validateRatio(payload.Progress, "progress"); err != nil {
+		return abs.ProgressUpdatePayload{}, err
+	}
+	if err := validateRatio(payload.EbookProgress, "ebookProgress"); err != nil {
+		return abs.ProgressUpdatePayload{}, err
+	}
+	return payload, nil
+}
+
+func buildBookmarkPayload(input BookmarkMutationInput) (string, abs.BookmarkPayload, error) {
+	itemID := strings.TrimSpace(input.ItemID)
+	title := strings.TrimSpace(input.Title)
+	if itemID == "" {
+		return "", abs.BookmarkPayload{}, fmt.Errorf("itemId is required")
+	}
+	if input.Time < 0 {
+		return "", abs.BookmarkPayload{}, fmt.Errorf("time must be greater than or equal to 0")
+	}
+	if title == "" {
+		return "", abs.BookmarkPayload{}, fmt.Errorf("title is required")
+	}
+	return itemID, abs.BookmarkPayload{Time: input.Time, Title: title}, nil
+}
+
+func validateNonNegativeFloat(value *float64, fieldName string) error {
+	if value != nil && *value < 0 {
+		return fmt.Errorf("%s must be greater than or equal to 0", fieldName)
+	}
+	return nil
+}
+
+func validateRatio(value *float64, fieldName string) error {
+	if value != nil && (*value < 0 || *value > 1) {
+		return fmt.Errorf("%s must be between 0 and 1", fieldName)
+	}
+	return nil
+}
+
+func buildItemMetadataPayload(input UpdateItemMetadataInput) (abs.ItemMetadataPayload, error) {
+	var payload abs.ItemMetadataPayload
+	metadata := &abs.ItemMetadataFields{}
+	hasMetadata := false
+
+	setString := func(target **string, value *string, fieldName string, requireNonBlank bool) error {
+		if value == nil {
+			return nil
+		}
+		normalized := strings.TrimSpace(*value)
+		if requireNonBlank && normalized == "" {
+			return fmt.Errorf("%s must not be blank", fieldName)
+		}
+		*target = &normalized
+		hasMetadata = true
+		return nil
+	}
+
+	if err := setString(&metadata.Title, input.Title, "title", true); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.Subtitle, input.Subtitle, "subtitle", false); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.Author, input.Author, "author", true); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.Description, input.Description, "description", false); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.PublishedYear, input.PublishedYear, "publishedYear", false); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.PublishedDate, input.PublishedDate, "publishedDate", false); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.Publisher, input.Publisher, "publisher", false); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.ISBN, input.ISBN, "isbn", false); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.ASIN, input.ASIN, "asin", false); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.Language, input.Language, "language", false); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if err := setString(&metadata.ReleaseDate, input.ReleaseDate, "releaseDate", false); err != nil {
+		return abs.ItemMetadataPayload{}, err
+	}
+	if input.Explicit != nil {
+		metadata.Explicit = input.Explicit
+		hasMetadata = true
+	}
+	if input.Abridged != nil {
+		metadata.Abridged = input.Abridged
+		hasMetadata = true
+	}
+	if input.Narrators != nil {
+		narrators, err := normalizeMetadataStringSlice(input.Narrators, "narrators")
+		if err != nil {
+			return abs.ItemMetadataPayload{}, err
+		}
+		metadata.Narrators = &narrators
+		hasMetadata = true
+	}
+	if input.Genres != nil {
+		genres, err := normalizeMetadataStringSlice(input.Genres, "genres")
+		if err != nil {
+			return abs.ItemMetadataPayload{}, err
+		}
+		metadata.Genres = &genres
+		hasMetadata = true
+	}
+	if input.Authors != nil {
+		authors, err := normalizeMetadataAuthors(input.Authors)
+		if err != nil {
+			return abs.ItemMetadataPayload{}, err
+		}
+		metadata.Authors = &authors
+		hasMetadata = true
+	}
+	if input.Series != nil {
+		series, err := normalizeMetadataSeries(input.Series)
+		if err != nil {
+			return abs.ItemMetadataPayload{}, err
+		}
+		metadata.Series = &series
+		hasMetadata = true
+	}
+	if input.Tags != nil {
+		tags, err := normalizeMetadataStringSlice(input.Tags, "tags")
+		if err != nil {
+			return abs.ItemMetadataPayload{}, err
+		}
+		payload.Tags = &tags
+	}
+	if hasMetadata {
+		payload.Metadata = metadata
+	}
+	if !hasMetadata && payload.Tags == nil {
+		return abs.ItemMetadataPayload{}, fmt.Errorf("at least one metadata field is required")
+	}
+	return payload, nil
+}
+
+func normalizeMetadataStringSlice(values []string, fieldName string) ([]string, error) {
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return nil, fmt.Errorf("%s must not contain blank values", fieldName)
+		}
+		normalized = append(normalized, value)
+	}
+	return normalized, nil
+}
+
+func normalizeMetadataAuthors(values []string) ([]abs.ItemMetadataAuthorPayload, error) {
+	normalized := make([]abs.ItemMetadataAuthorPayload, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return nil, fmt.Errorf("authors must not contain blank names")
+		}
+		normalized = append(normalized, abs.ItemMetadataAuthorPayload{Name: value})
+	}
+	return normalized, nil
+}
+
+func normalizeMetadataSeries(values []SeriesMetadataInput) ([]abs.ItemMetadataSeriesPayload, error) {
+	normalized := make([]abs.ItemMetadataSeriesPayload, 0, len(values))
+	for _, value := range values {
+		name := strings.TrimSpace(value.Name)
+		if name == "" {
+			return nil, fmt.Errorf("series.name is required")
+		}
+		normalized = append(normalized, abs.ItemMetadataSeriesPayload{
+			Name:     name,
+			Sequence: strings.TrimSpace(value.Sequence),
+		})
+	}
+	return normalized, nil
+}
+
+func normalizeRequiredIDs(values []string, fieldName string) ([]string, error) {
+	if len(values) == 0 {
+		return nil, fmt.Errorf("%s is required", fieldName)
+	}
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return nil, fmt.Errorf("%s must not contain blank IDs", fieldName)
+		}
+		normalized = append(normalized, value)
+	}
+	return normalized, nil
+}
+
+func normalizePlaylistItems(inputs []PlaylistCreateItemInput) ([]abs.PlaylistItemPayload, error) {
+	items := make([]abs.PlaylistItemPayload, 0, len(inputs))
+	for _, input := range inputs {
+		itemID := strings.TrimSpace(input.ItemID)
+		if itemID == "" {
+			return nil, fmt.Errorf("items.itemId is required")
+		}
+		items = append(items, abs.PlaylistItemPayload{
+			LibraryItemID: itemID,
+			EpisodeID:     strings.TrimSpace(input.EpisodeID),
+		})
+	}
+	return items, nil
+}
+
+func jsonValueID(value abs.JSONValue) string {
+	switch typed := value.(type) {
+	case map[string]any:
+		return stringValue(typed["id"])
+	case map[string]string:
+		return typed["id"]
+	}
+
+	body, err := json.Marshal(value)
+	if err != nil {
+		return ""
+	}
+	var response struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return ""
+	}
+	return response.ID
+}
+
+func stringValue(value any) string {
+	switch typed := value.(type) {
+	case string:
+		return typed
+	default:
+		return ""
+	}
+}
+
+func currentUserProgressScope(userID string) UserProgressScope {
+	return UserProgressScope{Scope: "currentUser", UserID: userID}
 }
 
 func normalizeLimit(limit int) (int, error) {
@@ -1392,6 +2245,53 @@ func normalizeLayoutConvention(convention string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("convention must be one of: %s", strings.Join(supportedLayoutConventions(), ", "))
+}
+
+func catalogListRequest(input CatalogListInput) (abs.CatalogListOptions, CatalogListOutput, error) {
+	if input.LibraryID == "" {
+		return abs.CatalogListOptions{}, CatalogListOutput{}, fmt.Errorf("libraryId is required")
+	}
+	limit, err := normalizeLimit(input.Limit)
+	if err != nil {
+		return abs.CatalogListOptions{}, CatalogListOutput{}, err
+	}
+	if input.Offset < 0 {
+		return abs.CatalogListOptions{}, CatalogListOutput{}, fmt.Errorf("offset must be greater than or equal to 0")
+	}
+	page, err := pageFromOffset(input.Offset, limit)
+	if err != nil {
+		return abs.CatalogListOptions{}, CatalogListOutput{}, err
+	}
+	include := sanitizeInclude(input.Include)
+	options := abs.CatalogListOptions{
+		Limit:    limit,
+		Page:     page,
+		Sort:     input.Sort,
+		Desc:     input.Desc,
+		Filter:   input.Filter,
+		Include:  include,
+		Minified: input.Minified,
+	}
+	output := CatalogListOutput{
+		LibraryID: input.LibraryID,
+		Limit:     limit,
+		Offset:    input.Offset,
+		Page:      page,
+		Sort:      input.Sort,
+		Desc:      input.Desc,
+		Filter:    input.Filter,
+		Include:   include,
+		Minified:  input.Minified,
+	}
+	return options, output, nil
+}
+
+func entityRequest(input EntityInput) ([]string, EntityOutput, error) {
+	if input.ID == "" {
+		return nil, EntityOutput{}, fmt.Errorf("id is required")
+	}
+	include := sanitizeInclude(input.Include)
+	return include, EntityOutput{ID: input.ID, Include: include}, nil
 }
 
 func pageFromOffset(offset int, limit int) (int, error) {
