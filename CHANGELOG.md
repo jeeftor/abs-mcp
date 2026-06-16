@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 - 2026-06-16
+
+### Added
+- Added optional Streamable HTTP transport with configurable bind address, endpoint path, and bearer-token protection while keeping stdio as the default transport.
+- Added source-backed author, series, collection, current-user progress, and bookmark MCP tools.
+- Added guarded metadata, progress, bookmark, collection, and playlist mutation tools behind the existing `ABS_READ_ONLY=false` gate.
+- Added fixture and protocol coverage for the expanded MCP surface.
+
+### Improved
+- Updated public tool documentation, comparison notes, and MCP Registry metadata for the expanded runtime configuration and tool surface.
+- Refreshed the Audiobookshelf API inventory source reference.
+
 ## 0.2.1 - 2026-05-20
 
 ### Added
