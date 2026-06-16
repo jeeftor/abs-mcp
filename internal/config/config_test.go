@@ -104,6 +104,43 @@ func TestLoadFromEnvDefaults(t *testing.T) {
 	if cfg.TLSSkipVerify {
 		t.Fatal("TLSSkipVerify = true, want false")
 	}
+	if cfg.Transport != TransportStdio {
+		t.Fatalf("Transport = %q, want %q", cfg.Transport, TransportStdio)
+	}
+	if cfg.HTTPAddr != defaultHTTPAddr {
+		t.Fatalf("HTTPAddr = %q, want %q", cfg.HTTPAddr, defaultHTTPAddr)
+	}
+	if cfg.HTTPPath != defaultHTTPPath {
+		t.Fatalf("HTTPPath = %q, want %q", cfg.HTTPPath, defaultHTTPPath)
+	}
+}
+
+func TestLoadFromEnvHTTPTransport(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := LoadFromEnv(mapLookup(map[string]string{
+		"ABS_BASE_URL":          "http://localhost:13388",
+		"ABS_API_KEY":           "test-token",
+		"ABS_TRANSPORT":         "http",
+		"ABS_HTTP_ADDR":         "127.0.0.1:8088",
+		"ABS_HTTP_PATH":         "/abs-mcp",
+		"ABS_HTTP_BEARER_TOKEN": "mcp-token",
+	}))
+	if err != nil {
+		t.Fatalf("LoadFromEnv failed: %v", err)
+	}
+	if cfg.Transport != TransportHTTP {
+		t.Fatalf("Transport = %q, want %q", cfg.Transport, TransportHTTP)
+	}
+	if cfg.HTTPAddr != "127.0.0.1:8088" {
+		t.Fatalf("HTTPAddr = %q", cfg.HTTPAddr)
+	}
+	if cfg.HTTPPath != "/abs-mcp" {
+		t.Fatalf("HTTPPath = %q", cfg.HTTPPath)
+	}
+	if cfg.HTTPBearerToken != "mcp-token" {
+		t.Fatalf("HTTPBearerToken = %q", cfg.HTTPBearerToken)
+	}
 }
 
 func TestLoadFromEnvRequiresURLAndAPIKey(t *testing.T) {
@@ -142,6 +179,21 @@ func TestLoadFromEnvRejectsInvalidValues(t *testing.T) {
 		"ABS_TLS_INSECURE_SKIP_VERIFY": "sometimes",
 	})); err == nil {
 		t.Fatal("expected invalid TLS skip verify error")
+	}
+	if _, err := LoadFromEnv(mapLookup(map[string]string{
+		"ABS_BASE_URL":  "http://localhost:13388",
+		"ABS_API_KEY":   "test-token",
+		"ABS_TRANSPORT": "sse",
+	})); err == nil {
+		t.Fatal("expected invalid transport error")
+	}
+	if _, err := LoadFromEnv(mapLookup(map[string]string{
+		"ABS_BASE_URL":  "http://localhost:13388",
+		"ABS_API_KEY":   "test-token",
+		"ABS_TRANSPORT": "http",
+		"ABS_HTTP_PATH": "mcp",
+	})); err == nil {
+		t.Fatal("expected invalid HTTP path error")
 	}
 }
 

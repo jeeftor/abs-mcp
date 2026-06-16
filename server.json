@@ -63,6 +63,30 @@
           "description": "Temporary TLS verification bypass for local troubleshooting.",
           "format": "boolean",
           "default": "false"
+        },
+        {
+          "name": "ABS_TRANSPORT",
+          "description": "MCP transport to run at startup. Use stdio for local launchers or http for Streamable HTTP.",
+          "format": "string",
+          "default": "stdio"
+        },
+        {
+          "name": "ABS_HTTP_ADDR",
+          "description": "Bind address used when ABS_TRANSPORT=http.",
+          "format": "string",
+          "default": "127.0.0.1:3333"
+        },
+        {
+          "name": "ABS_HTTP_PATH",
+          "description": "Streamable HTTP endpoint path used when ABS_TRANSPORT=http.",
+          "format": "string",
+          "default": "/mcp"
+        },
+        {
+          "name": "ABS_HTTP_BEARER_TOKEN",
+          "description": "Optional bearer token required from Streamable HTTP MCP clients.",
+          "format": "string",
+          "isSecret": true
         }
       ]
     }

@@ -13,7 +13,14 @@ import (
 )
 
 const (
-	defaultTimeout = 30 * time.Second
+	defaultTimeout  = 30 * time.Second
+	defaultHTTPAddr = "127.0.0.1:3333"
+	defaultHTTPPath = "/mcp"
+
+	// TransportStdio runs MCP over stdio.
+	TransportStdio = "stdio"
+	// TransportHTTP runs MCP over Streamable HTTP.
+	TransportHTTP = "http"
 
 	// KeyBaseURL is the configuration key for the Audiobookshelf base URL.
 	KeyBaseURL = "base-url"
@@ -35,6 +42,14 @@ const (
 	KeyTLSCACertFile = "tls-ca-cert-file"
 	// KeyTLSSkipVerify is the configuration key for temporary TLS verification bypass.
 	KeyTLSSkipVerify = "tls-insecure-skip-verify"
+	// KeyTransport is the configuration key for the MCP transport.
+	KeyTransport = "transport"
+	// KeyHTTPAddr is the configuration key for the Streamable HTTP bind address.
+	KeyHTTPAddr = "http-addr"
+	// KeyHTTPPath is the configuration key for the Streamable HTTP endpoint path.
+	KeyHTTPPath = "http-path"
+	// KeyHTTPBearerToken is the configuration key for protecting Streamable HTTP.
+	KeyHTTPBearerToken = "http-bearer-token"
 )
 
 var envFileKeys = map[string]string{
@@ -46,6 +61,10 @@ var envFileKeys = map[string]string{
 	"ABS_EXTRA_HEADERS_FILE":       KeyExtraHeadersFile,
 	"ABS_TLS_CA_CERT_FILE":         KeyTLSCACertFile,
 	"ABS_TLS_INSECURE_SKIP_VERIFY": KeyTLSSkipVerify,
+	"ABS_TRANSPORT":                KeyTransport,
+	"ABS_HTTP_ADDR":                KeyHTTPAddr,
+	"ABS_HTTP_PATH":                KeyHTTPPath,
+	"ABS_HTTP_BEARER_TOKEN":        KeyHTTPBearerToken,
 }
 
 // Config contains runtime settings for the MCP server.
@@ -59,6 +78,10 @@ type Config struct {
 	ExtraHeaders     map[string]string
 	TLSCACertFile    string
 	TLSSkipVerify    bool
+	Transport        string
+	HTTPAddr         string
+	HTTPPath         string
+	HTTPBearerToken  string
 }
 
 // Load reads configuration from process environment variables.
@@ -78,12 +101,18 @@ func LoadFromEnv(lookup func(string) (string, bool)) (Config, error) {
 		extraHeaderValues:    nil,
 		tlsCACertFile:        lookupString(lookup, "ABS_TLS_CA_CERT_FILE"),
 		tlsSkipVerify:        lookupString(lookup, "ABS_TLS_INSECURE_SKIP_VERIFY"),
+		transport:            lookupString(lookup, "ABS_TRANSPORT"),
+		httpAddr:             lookupString(lookup, "ABS_HTTP_ADDR"),
+		httpPath:             lookupString(lookup, "ABS_HTTP_PATH"),
+		httpBearerToken:      lookupString(lookup, "ABS_HTTP_BEARER_TOKEN"),
 		baseURLName:          "ABS_BASE_URL",
 		apiKeyName:           "ABS_API_KEY",
 		timeoutName:          "ABS_TIMEOUT",
 		readOnlyName:         "ABS_READ_ONLY",
 		extraHeadersFileName: "ABS_EXTRA_HEADERS_FILE",
 		tlsSkipVerifyName:    "ABS_TLS_INSECURE_SKIP_VERIFY",
+		transportName:        "ABS_TRANSPORT",
+		httpPathName:         "ABS_HTTP_PATH",
 	})
 }
 
@@ -96,6 +125,9 @@ func NewViper() *viper.Viper {
 	settings.SetDefault(KeyTimeout, defaultTimeout.String())
 	settings.SetDefault(KeyReadOnly, "true")
 	settings.SetDefault(KeyFixtureDir, "test/abs")
+	settings.SetDefault(KeyTransport, TransportStdio)
+	settings.SetDefault(KeyHTTPAddr, defaultHTTPAddr)
+	settings.SetDefault(KeyHTTPPath, defaultHTTPPath)
 	return settings
 }
 
@@ -158,12 +190,18 @@ func LoadFromViper(settings *viper.Viper) (Config, error) {
 		extraHeaderValues:    settings.GetStringSlice(KeyExtraHeader),
 		tlsCACertFile:        strings.TrimSpace(settings.GetString(KeyTLSCACertFile)),
 		tlsSkipVerify:        strings.TrimSpace(settings.GetString(KeyTLSSkipVerify)),
+		transport:            strings.TrimSpace(settings.GetString(KeyTransport)),
+		httpAddr:             strings.TrimSpace(settings.GetString(KeyHTTPAddr)),
+		httpPath:             strings.TrimSpace(settings.GetString(KeyHTTPPath)),
+		httpBearerToken:      strings.TrimSpace(settings.GetString(KeyHTTPBearerToken)),
 		baseURLName:          "ABS_BASE_URL or --base-url",
 		apiKeyName:           "ABS_API_KEY or --api-key",
 		timeoutName:          "ABS_TIMEOUT or --timeout",
 		readOnlyName:         "ABS_READ_ONLY or --read-only",
 		extraHeadersFileName: "ABS_EXTRA_HEADERS_FILE or --extra-headers-file",
 		tlsSkipVerifyName:    "ABS_TLS_INSECURE_SKIP_VERIFY or --tls-insecure-skip-verify",
+		transportName:        "ABS_TRANSPORT or --transport",
+		httpPathName:         "ABS_HTTP_PATH or --http-path",
 	})
 }
 
@@ -248,12 +286,18 @@ type sourceValues struct {
 	extraHeaderValues    []string
 	tlsCACertFile        string
 	tlsSkipVerify        string
+	transport            string
+	httpAddr             string
+	httpPath             string
+	httpBearerToken      string
 	baseURLName          string
 	apiKeyName           string
 	timeoutName          string
 	readOnlyName         string
 	extraHeadersFileName string
 	tlsSkipVerifyName    string
+	transportName        string
+	httpPathName         string
 }
 
 func load(values sourceValues) (Config, error) {
@@ -273,6 +317,18 @@ func load(values sourceValues) (Config, error) {
 		return Config{}, err
 	}
 	tlsSkipVerify, err := parseBool(values.tlsSkipVerify, values.tlsSkipVerifyName, false)
+	if err != nil {
+		return Config{}, err
+	}
+	transport, err := parseTransport(values.transport, values.transportName)
+	if err != nil {
+		return Config{}, err
+	}
+	httpAddr := values.httpAddr
+	if httpAddr == "" {
+		httpAddr = defaultHTTPAddr
+	}
+	httpPath, err := parseHTTPPath(values.httpPath, values.httpPathName)
 	if err != nil {
 		return Config{}, err
 	}
@@ -305,7 +361,35 @@ func load(values sourceValues) (Config, error) {
 		ExtraHeaders:     extraHeaders,
 		TLSCACertFile:    values.tlsCACertFile,
 		TLSSkipVerify:    tlsSkipVerify,
+		Transport:        transport,
+		HTTPAddr:         httpAddr,
+		HTTPPath:         httpPath,
+		HTTPBearerToken:  values.httpBearerToken,
 	}, nil
+}
+
+func parseTransport(value string, key string) (string, error) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return TransportStdio, nil
+	}
+	switch value {
+	case TransportStdio, TransportHTTP:
+		return value, nil
+	default:
+		return "", fmt.Errorf("%s must be %q or %q", key, TransportStdio, TransportHTTP)
+	}
+}
+
+func parseHTTPPath(value string, key string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return defaultHTTPPath, nil
+	}
+	if !strings.HasPrefix(value, "/") {
+		return "", fmt.Errorf("%s must start with /", key)
+	}
+	return value, nil
 }
 
 func parseExtraHeaderValue(header string) (string, string, error) {

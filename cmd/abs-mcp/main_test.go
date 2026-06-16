@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/jeeftor/abs-mcp/internal/config"
+	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"golang.org/x/oauth2"
 )
 
 func TestCommandServesMCPOverStdio(t *testing.T) {
@@ -107,6 +109,162 @@ func TestCommandServesMCPOverStdio(t *testing.T) {
 	mustUnmarshalStructured(t, result.StructuredContent, &output)
 	if !output.OK || output.Username != "root" || output.LibraryCount != 1 {
 		t.Fatalf("unexpected health output: %#v", output)
+	}
+}
+
+func TestStreamableHTTPHandlerServesMCP(t *testing.T) {
+	t.Parallel()
+
+	absServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("Authorization") != "Bearer test-token" {
+			http.Error(writer, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		switch request.URL.Path {
+		case "/api/me":
+			writeJSON(t, writer, map[string]any{
+				"id":       "user-1",
+				"username": "root",
+				"type":     "root",
+				"isActive": true,
+			})
+		case "/api/libraries":
+			writeJSON(t, writer, map[string]any{
+				"libraries": []map[string]any{
+					{
+						"id":        "lib-audio",
+						"name":      "Audiobooks",
+						"mediaType": "book",
+					},
+				},
+			})
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer absServer.Close()
+
+	handler, err := newStreamableHTTPHandler(config.Config{
+		ABSBaseURL: absServer.URL,
+		ABSAPIKey:  "test-token",
+		Timeout:    30 * time.Second,
+		ReadOnly:   true,
+		FixtureDir: "test/abs",
+		Transport:  config.TransportHTTP,
+		HTTPPath:   "/mcp",
+	})
+	if err != nil {
+		t.Fatalf("newStreamableHTTPHandler failed: %v", err)
+	}
+	httpServer := httptest.NewServer(handler)
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "abs-mcp-http-test",
+		Version: "0.1.0",
+	}, nil)
+	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: httpServer.URL + "/mcp"}, nil)
+	if err != nil {
+		t.Fatalf("connect to streamable HTTP transport: %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_health_check",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("call abs_health_check: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("abs_health_check returned tool error: %#v", result.Content)
+	}
+
+	readOnlyResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_scan_library",
+		Arguments: map[string]any{
+			"libraryId": "lib-audio",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_scan_library: %v", err)
+	}
+	if !readOnlyResult.IsError {
+		t.Fatal("abs_scan_library succeeded over HTTP with ABS_READ_ONLY=true")
+	}
+}
+
+func TestStreamableHTTPHandlerRequiresConfiguredBearerToken(t *testing.T) {
+	t.Parallel()
+
+	absServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/api/me":
+			writeJSON(t, writer, map[string]any{
+				"id":       "user-1",
+				"username": "root",
+				"type":     "root",
+				"isActive": true,
+			})
+		case "/api/libraries":
+			writeJSON(t, writer, map[string]any{
+				"libraries": []map[string]any{},
+			})
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer absServer.Close()
+
+	handler, err := newStreamableHTTPHandler(config.Config{
+		ABSBaseURL:      absServer.URL,
+		ABSAPIKey:       "test-token",
+		Timeout:         30 * time.Second,
+		ReadOnly:        true,
+		FixtureDir:      "test/abs",
+		Transport:       config.TransportHTTP,
+		HTTPPath:        "/mcp",
+		HTTPBearerToken: "mcp-token",
+	})
+	if err != nil {
+		t.Fatalf("newStreamableHTTPHandler failed: %v", err)
+	}
+	httpServer := httptest.NewServer(handler)
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "abs-mcp-http-auth-test",
+		Version: "0.1.0",
+	}, nil)
+	if session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: httpServer.URL + "/mcp"}, nil); err == nil {
+		session.Close()
+		t.Fatal("unauthenticated streamable HTTP connection succeeded")
+	}
+
+	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{
+		Endpoint:     httpServer.URL + "/mcp",
+		OAuthHandler: staticBearerTokenHandler("mcp-token"),
+	}, nil)
+	if err != nil {
+		t.Fatalf("connect to authenticated streamable HTTP transport: %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_health_check",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("call abs_health_check: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("abs_health_check returned tool error: %#v", result.Content)
 	}
 }
 
@@ -417,6 +575,24 @@ func writeJSON(t *testing.T, writer http.ResponseWriter, value any) {
 	if err := json.NewEncoder(writer).Encode(value); err != nil {
 		t.Fatalf("encode response: %v", err)
 	}
+}
+
+func staticBearerTokenHandler(token string) auth.OAuthHandler {
+	return fixedTokenOAuthHandler{
+		source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}),
+	}
+}
+
+type fixedTokenOAuthHandler struct {
+	source oauth2.TokenSource
+}
+
+func (h fixedTokenOAuthHandler) TokenSource(context.Context) (oauth2.TokenSource, error) {
+	return h.source, nil
+}
+
+func (h fixedTokenOAuthHandler) Authorize(context.Context, *http.Request, *http.Response) error {
+	return nil
 }
 
 func mustUnmarshalStructured(t *testing.T, value any, target any) {
