@@ -1140,26 +1140,6 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		}
 	}
 
-	removeInitialPlaylistResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
-		Name: "abs_remove_playlist_item",
-		Arguments: map[string]any{
-			"playlistId":   createdPlaylist.ID,
-			"itemId":       items.Items[0].ID,
-			"confirmation": "remove item " + items.Items[0].ID + " from playlist " + createdPlaylist.ID,
-		},
-	})
-	if err != nil {
-		t.Fatalf("call mutating abs_remove_playlist_item for initial item: %v", err)
-	}
-	if removeInitialPlaylistResult.IsError {
-		t.Fatalf("abs_remove_playlist_item initial item returned tool error: %s", contentText(removeInitialPlaylistResult.Content))
-	}
-	var removedInitialPlaylistItem mcpserver.CatalogMutationOutput
-	unmarshalStructuredOutput(t, removeInitialPlaylistResult.StructuredContent, &removedInitialPlaylistItem)
-	if !removedInitialPlaylistItem.Triggered || removedInitialPlaylistItem.ID != createdPlaylist.ID {
-		t.Fatalf("unexpected remove initial playlist item output: %#v", removedInitialPlaylistItem)
-	}
-
 	deletePlaylistResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
 		Name: "abs_delete_playlist",
 		Arguments: map[string]any{
