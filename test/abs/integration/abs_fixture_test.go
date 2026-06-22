@@ -951,7 +951,7 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		t.Fatalf("call mutating abs_create_collection: %v", err)
 	}
 	if createCollectionResult.IsError {
-		t.Fatalf("abs_create_collection returned tool error: %#v", createCollectionResult.Content)
+		t.Fatalf("abs_create_collection returned tool error: %s", contentText(createCollectionResult.Content))
 	}
 	var createdCollection mcpserver.CatalogMutationOutput
 	unmarshalStructuredOutput(t, createCollectionResult.StructuredContent, &createdCollection)
@@ -970,7 +970,7 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		t.Fatalf("call mutating abs_update_collection: %v", err)
 	}
 	if updateCollectionResult.IsError {
-		t.Fatalf("abs_update_collection returned tool error: %#v", updateCollectionResult.Content)
+		t.Fatalf("abs_update_collection returned tool error: %s", contentText(updateCollectionResult.Content))
 	}
 	var updatedCollection mcpserver.CatalogMutationOutput
 	unmarshalStructuredOutput(t, updateCollectionResult.StructuredContent, &updatedCollection)
@@ -990,7 +990,7 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 			t.Fatalf("call mutating abs_add_collection_item: %v", err)
 		}
 		if addCollectionResult.IsError {
-			t.Fatalf("abs_add_collection_item returned tool error: %#v", addCollectionResult.Content)
+			t.Fatalf("abs_add_collection_item returned tool error: %s", contentText(addCollectionResult.Content))
 		}
 		var addCollection mcpserver.CatalogMutationOutput
 		unmarshalStructuredOutput(t, addCollectionResult.StructuredContent, &addCollection)
@@ -1010,13 +1010,33 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 			t.Fatalf("call mutating abs_remove_collection_item: %v", err)
 		}
 		if removeCollectionResult.IsError {
-			t.Fatalf("abs_remove_collection_item returned tool error: %#v", removeCollectionResult.Content)
+			t.Fatalf("abs_remove_collection_item returned tool error: %s", contentText(removeCollectionResult.Content))
 		}
 		var removedCollectionItem mcpserver.CatalogMutationOutput
 		unmarshalStructuredOutput(t, removeCollectionResult.StructuredContent, &removedCollectionItem)
 		if !removedCollectionItem.Triggered || removedCollectionItem.ID != createdCollection.ID {
 			t.Fatalf("unexpected remove collection item output: %#v", removedCollectionItem)
 		}
+	}
+
+	removeInitialCollectionItemResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_remove_collection_item",
+		Arguments: map[string]any{
+			"collectionId": createdCollection.ID,
+			"itemId":       items.Items[0].ID,
+			"confirmation": "remove item " + items.Items[0].ID + " from collection " + createdCollection.ID,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call mutating abs_remove_collection_item for initial item: %v", err)
+	}
+	if removeInitialCollectionItemResult.IsError {
+		t.Fatalf("abs_remove_collection_item initial item returned tool error: %s", contentText(removeInitialCollectionItemResult.Content))
+	}
+	var removedInitialCollectionItem mcpserver.CatalogMutationOutput
+	unmarshalStructuredOutput(t, removeInitialCollectionItemResult.StructuredContent, &removedInitialCollectionItem)
+	if !removedInitialCollectionItem.Triggered || removedInitialCollectionItem.ID != createdCollection.ID {
+		t.Fatalf("unexpected remove initial collection item output: %#v", removedInitialCollectionItem)
 	}
 
 	deleteCollectionResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
@@ -1030,7 +1050,7 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		t.Fatalf("call mutating abs_delete_collection: %v", err)
 	}
 	if deleteCollectionResult.IsError {
-		t.Fatalf("abs_delete_collection returned tool error: %#v", deleteCollectionResult.Content)
+		t.Fatalf("abs_delete_collection returned tool error: %s", contentText(deleteCollectionResult.Content))
 	}
 	var deletedCollection mcpserver.CatalogMutationOutput
 	unmarshalStructuredOutput(t, deleteCollectionResult.StructuredContent, &deletedCollection)
@@ -1052,7 +1072,7 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		t.Fatalf("call mutating abs_create_playlist: %v", err)
 	}
 	if createPlaylistResult.IsError {
-		t.Fatalf("abs_create_playlist returned tool error: %#v", createPlaylistResult.Content)
+		t.Fatalf("abs_create_playlist returned tool error: %s", contentText(createPlaylistResult.Content))
 	}
 	var createdPlaylist mcpserver.CatalogMutationOutput
 	unmarshalStructuredOutput(t, createPlaylistResult.StructuredContent, &createdPlaylist)
@@ -1071,7 +1091,7 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		t.Fatalf("call mutating abs_update_playlist: %v", err)
 	}
 	if updatePlaylistResult.IsError {
-		t.Fatalf("abs_update_playlist returned tool error: %#v", updatePlaylistResult.Content)
+		t.Fatalf("abs_update_playlist returned tool error: %s", contentText(updatePlaylistResult.Content))
 	}
 	var updatedPlaylist mcpserver.CatalogMutationOutput
 	unmarshalStructuredOutput(t, updatePlaylistResult.StructuredContent, &updatedPlaylist)
@@ -1091,7 +1111,7 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 			t.Fatalf("call mutating abs_add_playlist_item: %v", err)
 		}
 		if addPlaylistResult.IsError {
-			t.Fatalf("abs_add_playlist_item returned tool error: %#v", addPlaylistResult.Content)
+			t.Fatalf("abs_add_playlist_item returned tool error: %s", contentText(addPlaylistResult.Content))
 		}
 		var addPlaylist mcpserver.CatalogMutationOutput
 		unmarshalStructuredOutput(t, addPlaylistResult.StructuredContent, &addPlaylist)
@@ -1111,13 +1131,33 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 			t.Fatalf("call mutating abs_remove_playlist_item: %v", err)
 		}
 		if removePlaylistResult.IsError {
-			t.Fatalf("abs_remove_playlist_item returned tool error: %#v", removePlaylistResult.Content)
+			t.Fatalf("abs_remove_playlist_item returned tool error: %s", contentText(removePlaylistResult.Content))
 		}
 		var removedPlaylistItem mcpserver.CatalogMutationOutput
 		unmarshalStructuredOutput(t, removePlaylistResult.StructuredContent, &removedPlaylistItem)
 		if !removedPlaylistItem.Triggered || removedPlaylistItem.ID != createdPlaylist.ID {
 			t.Fatalf("unexpected remove playlist item output: %#v", removedPlaylistItem)
 		}
+	}
+
+	removeInitialPlaylistResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_remove_playlist_item",
+		Arguments: map[string]any{
+			"playlistId":   createdPlaylist.ID,
+			"itemId":       items.Items[0].ID,
+			"confirmation": "remove item " + items.Items[0].ID + " from playlist " + createdPlaylist.ID,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call mutating abs_remove_playlist_item for initial item: %v", err)
+	}
+	if removeInitialPlaylistResult.IsError {
+		t.Fatalf("abs_remove_playlist_item initial item returned tool error: %s", contentText(removeInitialPlaylistResult.Content))
+	}
+	var removedInitialPlaylistItem mcpserver.CatalogMutationOutput
+	unmarshalStructuredOutput(t, removeInitialPlaylistResult.StructuredContent, &removedInitialPlaylistItem)
+	if !removedInitialPlaylistItem.Triggered || removedInitialPlaylistItem.ID != createdPlaylist.ID {
+		t.Fatalf("unexpected remove initial playlist item output: %#v", removedInitialPlaylistItem)
 	}
 
 	deletePlaylistResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
@@ -1131,7 +1171,7 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		t.Fatalf("call mutating abs_delete_playlist: %v", err)
 	}
 	if deletePlaylistResult.IsError {
-		t.Fatalf("abs_delete_playlist returned tool error: %#v", deletePlaylistResult.Content)
+		t.Fatalf("abs_delete_playlist returned tool error: %s", contentText(deletePlaylistResult.Content))
 	}
 	var deletedPlaylist mcpserver.CatalogMutationOutput
 	unmarshalStructuredOutput(t, deletePlaylistResult.StructuredContent, &deletedPlaylist)
