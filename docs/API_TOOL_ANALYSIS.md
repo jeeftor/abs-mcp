@@ -84,6 +84,19 @@ These are read-heavy, broadly useful, and fixture-testable.
   - Purpose: find ebook item IDs before send-to-device workflows.
   - Mutates: no.
 
+- `abs_preview_ebook_device_send`
+  - API basis: local ebook search plus sanitized ereader device listing.
+  - Purpose: preview the query/device resolution before any ebook send.
+  - Inputs: `libraryId`, `query`, optional `deviceName`, optional
+    `maxCandidates`.
+  - Output: compact ebook candidates, sanitized ereader device names, `ready`,
+    exact confirmation string only when one ebook and one saved device name
+    resolve, and `nextTool`. ABS remains authoritative for final device access
+    and delivery checks during send.
+  - Flow: preview first, then call `abs_send_ebook_by_query` with the returned
+    confirmation or `abs_send_ebook_to_device` with the resolved item/device.
+  - Mutates: no.
+
 - `abs_get_library_stats`
   - API basis: `GET /api/libraries/:id/stats`.
   - Purpose: summarize library health and size.
@@ -180,6 +193,9 @@ Already exposed:
   `POST /api/emails/send-ebook-to-device`, blocked by read-only mode, limited to
   exactly one query match, and guarded by an exact confirmation string containing
   the resolved item ID and device name.
+- `abs_preview_ebook_device_send`: read-only preview for ebook delivery; returns
+  compact ebook candidates, sanitized device names, readiness, confirmation when
+  one saved device name matches, and the next send tool without sending email.
 - `abs_list_ereader_devices`: `GET /api/emails/settings`, read-only but
   admin-scoped in Audiobookshelf; returns only sanitized ereader device metadata
   and intentionally omits SMTP settings and saved device email addresses.

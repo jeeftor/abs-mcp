@@ -1085,6 +1085,97 @@ func TestSendEbookToDeviceRequiresInput(t *testing.T) {
 	}
 }
 
+func TestPreviewEbookDeviceSendReady(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.PreviewEbookDeviceSend(context.Background(), nil, PreviewEbookDeviceSendInput{
+		LibraryID:     "lib-books",
+		Query:         "alice.epub",
+		DeviceName:    " Kindle ",
+		MaxCandidates: 10,
+	})
+	if err != nil {
+		t.Fatalf("PreviewEbookDeviceSend failed: %v", err)
+	}
+	if !output.Ready {
+		t.Fatalf("Ready = false, want true: %#v", output)
+	}
+	if output.Confirmation != "send ebook book-1 to Kindle" {
+		t.Fatalf("Confirmation = %q, want exact send text", output.Confirmation)
+	}
+	if output.NextTool != "abs_send_ebook_by_query" {
+		t.Fatalf("NextTool = %q, want abs_send_ebook_by_query", output.NextTool)
+	}
+	if output.CandidateCount != 1 || len(output.Candidates) != 1 || output.Candidates[0].ID != "book-1" {
+		t.Fatalf("unexpected candidates: %#v", output.Candidates)
+	}
+	if output.DeviceCount != 2 || len(output.Devices) != 2 || output.Devices[0].Email != "" {
+		t.Fatalf("unexpected sanitized devices: %#v", output.Devices)
+	}
+	if client.sendEbookPayload.LibraryItemID != "" {
+		t.Fatalf("preview sent ebook unexpectedly: %#v", client.sendEbookPayload)
+	}
+}
+
+func TestPreviewEbookDeviceSendRejectsAmbiguousEbooks(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.PreviewEbookDeviceSend(context.Background(), nil, PreviewEbookDeviceSendInput{
+		LibraryID:  "lib-books",
+		Query:      "alice",
+		DeviceName: "Kindle",
+	})
+	if err != nil {
+		t.Fatalf("PreviewEbookDeviceSend failed: %v", err)
+	}
+	if output.Ready {
+		t.Fatalf("Ready = true for ambiguous query: %#v", output)
+	}
+	if output.CandidateCount != 2 || output.NextTool != "abs_search_ebooks" || output.Confirmation != "" {
+		t.Fatalf("unexpected ambiguous preview output: %#v", output)
+	}
+}
+
+func TestPreviewEbookDeviceSendRejectsMissingDevice(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.PreviewEbookDeviceSend(context.Background(), nil, PreviewEbookDeviceSendInput{
+		LibraryID:  "lib-books",
+		Query:      "alice.epub",
+		DeviceName: "Nook",
+	})
+	if err != nil {
+		t.Fatalf("PreviewEbookDeviceSend failed: %v", err)
+	}
+	if output.Ready {
+		t.Fatalf("Ready = true for missing device: %#v", output)
+	}
+	if output.CandidateCount != 1 || output.NextTool != "abs_list_ereader_devices" || output.Confirmation != "" {
+		t.Fatalf("unexpected missing-device preview output: %#v", output)
+	}
+}
+
+func TestPreviewEbookDeviceSendWorksInReadOnlyMode(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.PreviewEbookDeviceSend(context.Background(), nil, PreviewEbookDeviceSendInput{
+		LibraryID:  "lib-books",
+		Query:      "alice.epub",
+		DeviceName: "Kindle",
+	})
+	if err != nil {
+		t.Fatalf("PreviewEbookDeviceSend failed in read-only mode: %v", err)
+	}
+	if !output.Ready || output.Confirmation != "send ebook book-1 to Kindle" {
+		t.Fatalf("unexpected read-only preview output: %#v", output)
+	}
+}
+
 func TestSendEbookByQuery(t *testing.T) {
 	t.Parallel()
 

@@ -142,6 +142,7 @@ Read-only tools:
 - `abs_get_library_item`
 - `abs_search_library`
 - `abs_search_ebooks`
+- `abs_preview_ebook_device_send`
 - `abs_get_library_stats`
 - `abs_get_filter_data`
 - `abs_list_library_authors`
@@ -198,6 +199,11 @@ Mutating tools are blocked by default because `ABS_READ_ONLY` defaults to
 current-user progress/bookmark writes, ebook send-to-device email delivery,
 guarded query-based ebook delivery, and non-destructive collection/playlist
 create, update, add-item, delete, and remove-item tools are implemented.
+Use `abs_preview_ebook_device_send` first for ebook delivery UX: it is
+read-only, returns compact ebook candidates, sanitized device names, `ready`,
+the exact confirmation string when one ebook and one saved device name resolve,
+and `nextTool` for the send step. ABS still authorizes device access and email
+delivery during the final send call.
 Remaining planned mutating tools, including item matching and item track
 updates, are advertised for discovery but return a not-implemented error after
 read-only checks until their ABS source and fixture behavior is verified.

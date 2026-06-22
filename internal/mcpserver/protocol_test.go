@@ -80,6 +80,7 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 		"abs_list_bookmarks",
 		"abs_list_backups",
 		"abs_list_ereader_devices",
+		"abs_preview_ebook_device_send",
 	} {
 		if !toolNames(tools)[toolName] {
 			t.Fatalf("expected %s in tools: %#v", toolName, tools.Tools)
@@ -254,6 +255,26 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	}
 	if deviceResult.IsError {
 		t.Fatalf("abs_list_ereader_devices returned tool error: %#v", deviceResult.Content)
+	}
+
+	previewResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_preview_ebook_device_send",
+		Arguments: map[string]any{
+			"libraryId":  "lib-books",
+			"query":      "alice.epub",
+			"deviceName": "Kindle",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_preview_ebook_device_send: %v", err)
+	}
+	if previewResult.IsError {
+		t.Fatalf("abs_preview_ebook_device_send returned tool error: %#v", previewResult.Content)
+	}
+	var previewOutput PreviewEbookDeviceSendOutput
+	marshalStructuredOutput(t, previewResult.StructuredContent, &previewOutput)
+	if !previewOutput.Ready || previewOutput.Confirmation != "send ebook book-1 to Kindle" {
+		t.Fatalf("unexpected preview output: %#v", previewOutput)
 	}
 
 	layoutResult, err := session.CallTool(ctx, &mcp.CallToolParams{

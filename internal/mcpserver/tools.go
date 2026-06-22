@@ -222,6 +222,11 @@ func (s *Server) MCPServer() *mcp.Server {
 		Description: "List saved Audiobookshelf ereader device names from email settings without returning SMTP settings. Requires sufficient ABS permissions.",
 	}, s.ListEreaderDevices)
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_preview_ebook_device_send",
+		Title:       "Preview Audiobookshelf ebook device send",
+		Description: "Resolve ebook and ereader-device candidates for a guarded send workflow without sending email.",
+	}, s.PreviewEbookDeviceSend)
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_send_ebook_to_device",
 		Title:       "Send Audiobookshelf ebook to device",
 		Description: "Send one Audiobookshelf ebook item to a saved ereader device by device name. Blocked when ABS_READ_ONLY is true.",
@@ -643,6 +648,28 @@ type EReaderDeviceSummary struct {
 type EReaderDevicesOutput struct {
 	Devices []EReaderDeviceSummary `json:"devices" jsonschema:"Sanitized saved ereader devices."`
 	Count   int                    `json:"count" jsonschema:"Number of devices returned."`
+}
+
+// PreviewEbookDeviceSendInput identifies one read-only ebook send preview.
+type PreviewEbookDeviceSendInput struct {
+	LibraryID     string `json:"libraryId" jsonschema:"Audiobookshelf ebook library ID to search."`
+	Query         string `json:"query" jsonschema:"Query matched against ebook title, author, series, and filename."`
+	DeviceName    string `json:"deviceName,omitempty" jsonschema:"Optional exact saved Audiobookshelf ereader device name."`
+	MaxCandidates int    `json:"maxCandidates,omitempty" jsonschema:"Maximum matching ebook candidates to return. Defaults to 10 and is capped at 50."`
+}
+
+// PreviewEbookDeviceSendOutput is returned by abs_preview_ebook_device_send.
+type PreviewEbookDeviceSendOutput struct {
+	LibraryID      string                 `json:"libraryId" jsonschema:"Audiobookshelf library ID searched."`
+	Query          string                 `json:"query" jsonschema:"Query used to resolve ebook candidates."`
+	DeviceName     string                 `json:"deviceName,omitempty" jsonschema:"Requested or resolved saved ereader device name."`
+	Ready          bool                   `json:"ready" jsonschema:"Whether the preview resolved exactly one ebook and one saved device name. ABS still validates device access during send."`
+	Confirmation   string                 `json:"confirmation,omitempty" jsonschema:"Exact confirmation text to pass to abs_send_ebook_by_query when ready."`
+	CandidateCount int                    `json:"candidateCount" jsonschema:"Number of ebook candidates matched before truncation."`
+	Candidates     []LibraryItemSummary   `json:"candidates" jsonschema:"Compact ebook candidates."`
+	DeviceCount    int                    `json:"deviceCount" jsonschema:"Number of saved ereader devices returned."`
+	Devices        []EReaderDeviceSummary `json:"devices" jsonschema:"Sanitized saved ereader devices."`
+	NextTool       string                 `json:"nextTool" jsonschema:"Suggested next MCP tool for the workflow."`
 }
 
 // SendEbookToDeviceInput identifies one ebook send request.
@@ -1477,9 +1504,17 @@ func (s *Server) ListEreaderDevices(
 	_ *mcp.CallToolRequest,
 	_ EmptyInput,
 ) (*mcp.CallToolResult, EReaderDevicesOutput, error) {
+	devices, err := s.listEreaderDeviceSummaries(ctx)
+	if err != nil {
+		return nil, EReaderDevicesOutput{}, err
+	}
+	return nil, EReaderDevicesOutput{Devices: devices, Count: len(devices)}, nil
+}
+
+func (s *Server) listEreaderDeviceSummaries(ctx context.Context) ([]EReaderDeviceSummary, error) {
 	settings, err := s.client.GetEmailSettings(ctx)
 	if err != nil {
-		return nil, EReaderDevicesOutput{}, fmt.Errorf("get ABS email settings for ereader devices: %w", err)
+		return nil, fmt.Errorf("get ABS email settings for ereader devices: %w", err)
 	}
 	devices := make([]EReaderDeviceSummary, 0, len(settings.EReaderDevices))
 	for _, device := range settings.EReaderDevices {
@@ -1493,7 +1528,7 @@ func (s *Server) ListEreaderDevices(
 			Users:              append([]string(nil), device.Users...),
 		})
 	}
-	return nil, EReaderDevicesOutput{Devices: devices, Count: len(devices)}, nil
+	return devices, nil
 }
 
 // GetItemMetadataObject returns the raw ABS metadata object for one item.
@@ -1740,6 +1775,76 @@ func (s *Server) ScanItem(
 		ItemID:    input.ItemID,
 		Result:    response.Result,
 	}, nil
+}
+
+// PreviewEbookDeviceSend resolves ebook and device candidates without sending email.
+func (s *Server) PreviewEbookDeviceSend(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input PreviewEbookDeviceSendInput,
+) (*mcp.CallToolResult, PreviewEbookDeviceSendOutput, error) {
+	libraryID := strings.TrimSpace(input.LibraryID)
+	query := strings.TrimSpace(input.Query)
+	deviceName := strings.TrimSpace(input.DeviceName)
+	if libraryID == "" {
+		return nil, PreviewEbookDeviceSendOutput{}, fmt.Errorf("libraryId is required")
+	}
+	if query == "" {
+		return nil, PreviewEbookDeviceSendOutput{}, fmt.Errorf("query is required")
+	}
+	limit, err := normalizeQuerySendCandidateLimit(input.MaxCandidates)
+	if err != nil {
+		return nil, PreviewEbookDeviceSendOutput{}, err
+	}
+
+	searchOutput, matches, err := s.searchEbooks(ctx, libraryID, query, limit)
+	if err != nil {
+		return nil, PreviewEbookDeviceSendOutput{}, err
+	}
+	devices, err := s.listEreaderDeviceSummaries(ctx)
+	if err != nil {
+		return nil, PreviewEbookDeviceSendOutput{}, err
+	}
+
+	output := PreviewEbookDeviceSendOutput{
+		LibraryID:      libraryID,
+		Query:          query,
+		DeviceName:     deviceName,
+		CandidateCount: searchOutput.MatchedCount,
+		Candidates:     searchOutput.Items,
+		DeviceCount:    len(devices),
+		Devices:        devices,
+	}
+
+	resolvedDevice := resolvePreviewDeviceName(deviceName, devices)
+	if output.CandidateCount == 1 && resolvedDevice != "" {
+		output.Ready = true
+		output.DeviceName = resolvedDevice
+		output.Confirmation = fmt.Sprintf("send ebook %s to %s", matches[0].ID, resolvedDevice)
+		output.NextTool = "abs_send_ebook_by_query"
+		return nil, output, nil
+	}
+	if output.CandidateCount != 1 {
+		output.NextTool = "abs_search_ebooks"
+	} else {
+		output.NextTool = "abs_list_ereader_devices"
+	}
+	return nil, output, nil
+}
+
+func resolvePreviewDeviceName(requested string, devices []EReaderDeviceSummary) string {
+	if requested != "" {
+		for _, device := range devices {
+			if device.Name == requested {
+				return device.Name
+			}
+		}
+		return ""
+	}
+	if len(devices) == 1 {
+		return devices[0].Name
+	}
+	return ""
 }
 
 // SendEbookToDevice sends one ebook item to a saved ereader device.

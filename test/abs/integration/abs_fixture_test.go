@@ -352,6 +352,48 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		t.Fatalf("expected at least two audiobook items for catalog lifecycle fixture coverage, got %d", len(items.Items))
 	}
 
+	ebookSearchResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_search_ebooks",
+		Arguments: map[string]any{
+			"libraryId": ebookLibrary.ID,
+			"query":     "austen",
+			"limit":     env.ExpectedEbooks,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_search_ebooks: %v", err)
+	}
+	if ebookSearchResult.IsError {
+		t.Fatalf("abs_search_ebooks returned tool error: %#v", ebookSearchResult.Content)
+	}
+	var ebookSearch mcpserver.SearchEbooksOutput
+	unmarshalStructuredOutput(t, ebookSearchResult.StructuredContent, &ebookSearch)
+	if ebookSearch.MatchedCount == 0 || len(ebookSearch.Items) == 0 {
+		t.Fatalf("expected ebook search to find fixture ebook candidates: %#v", ebookSearch)
+	}
+
+	previewResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_preview_ebook_device_send",
+		Arguments: map[string]any{
+			"libraryId": ebookLibrary.ID,
+			"query":     "austen",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_preview_ebook_device_send: %v", err)
+	}
+	if previewResult.IsError {
+		t.Fatalf("abs_preview_ebook_device_send returned tool error: %#v", previewResult.Content)
+	}
+	var preview mcpserver.PreviewEbookDeviceSendOutput
+	unmarshalStructuredOutput(t, previewResult.StructuredContent, &preview)
+	if preview.CandidateCount == 0 || len(preview.Candidates) == 0 {
+		t.Fatalf("expected preview to include fixture ebook candidates: %#v", preview)
+	}
+	if preview.Ready {
+		t.Fatalf("preview unexpectedly ready without a fixture ereader device: %#v", preview)
+	}
+
 	searchResult, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "abs_search_library",
 		Arguments: map[string]any{
