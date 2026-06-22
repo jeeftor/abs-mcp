@@ -35,6 +35,7 @@ Build a high-quality Model Context Protocol server for Audiobookshelf. The serve
 - Tools perform actions or bounded queries.
 - Resources expose readable state snapshots such as server info, libraries, item summaries, generated API inventory, and fixture status.
 - Prompts should be limited to repeatable operator workflows such as library audit, scan troubleshooting, or API update review.
+- Always target token-use efficiency when it does not compromise server usability. Prefer bounded defaults, compact summaries, optional detail expansion, pagination, and IDs/links over returning large raw payloads by default.
 - Tool names should be stable, explicit, and namespaced with `abs_`.
 - Each tool schema must define required inputs, optional inputs, output shape, error cases, and whether it can mutate ABS state.
 - Mutating tools must be opt-in and should require IDs rather than fuzzy names where possible.
