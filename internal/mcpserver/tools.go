@@ -42,6 +42,8 @@ type ABSClient interface {
 	UpdateBookmark(context.Context, string, abs.BookmarkPayload) (*abs.Bookmark, error)
 	ListBackups(context.Context) ([]abs.Backup, error)
 	CreateBackup(context.Context) (*abs.Backup, error)
+	SendEbookToDevice(context.Context, abs.EbookDevicePayload) (abs.JSONValue, error)
+	GetEmailSettings(context.Context) (*abs.EmailSettings, error)
 	GetItemMetadataObject(context.Context, string) (abs.JSONValue, error)
 	UpdateItemMetadata(context.Context, string, abs.ItemMetadataPayload) (abs.JSONValue, error)
 	ScanLibrary(context.Context, string, bool) error
@@ -113,6 +115,11 @@ func (s *Server) MCPServer() *mcp.Server {
 		Title:       "Search Audiobookshelf library",
 		Description: "Search one Audiobookshelf library with a bounded result limit.",
 	}, s.SearchLibrary)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_search_ebooks",
+		Title:       "Search Audiobookshelf ebooks",
+		Description: "Search one Audiobookshelf library for items that have ebook files.",
+	}, s.SearchEbooks)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_get_library_stats",
 		Title:       "Get Audiobookshelf library stats",
@@ -193,6 +200,21 @@ func (s *Server) MCPServer() *mcp.Server {
 		Title:       "Create Audiobookshelf backup",
 		Description: "Create one Audiobookshelf server backup. Blocked when ABS_READ_ONLY is true.",
 	}, s.CreateBackup)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_list_ereader_devices",
+		Title:       "List Audiobookshelf ereader devices",
+		Description: "List saved Audiobookshelf ereader device names from email settings without returning SMTP settings. Requires sufficient ABS permissions.",
+	}, s.ListEreaderDevices)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_send_ebook_to_device",
+		Title:       "Send Audiobookshelf ebook to device",
+		Description: "Send one Audiobookshelf ebook item to a saved ereader device by device name. Blocked when ABS_READ_ONLY is true.",
+	}, s.SendEbookToDevice)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_send_ebook_by_query",
+		Title:       "Send Audiobookshelf ebook by query",
+		Description: "Resolve exactly one ebook search match, require an exact confirmation string, then send it to a saved ereader device. Blocked when ABS_READ_ONLY is true.",
+	}, s.SendEbookByQuery)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_get_item_metadata_object",
 		Title:       "Get Audiobookshelf item metadata object",
@@ -408,6 +430,26 @@ type SearchLibraryOutput struct {
 	Data      abs.JSONValue `json:"data" jsonschema:"Raw Audiobookshelf search response."`
 }
 
+// SearchEbooksInput selects one bounded ebook search.
+type SearchEbooksInput struct {
+	LibraryID string `json:"libraryId" jsonschema:"Audiobookshelf library ID."`
+	Query     string `json:"query,omitempty" jsonschema:"Optional query matched against title, author, series, and ebook filename. Blank returns ebook items up to the limit."`
+	Limit     int    `json:"limit,omitempty" jsonschema:"Maximum number of ebook results. Defaults to 25 and is capped at 100."`
+}
+
+// SearchEbooksOutput is returned by abs_search_ebooks.
+type SearchEbooksOutput struct {
+	LibraryID     string               `json:"libraryId" jsonschema:"Audiobookshelf library ID searched."`
+	Query         string               `json:"query,omitempty" jsonschema:"Normalized query text used for matching."`
+	Limit         int                  `json:"limit" jsonschema:"Maximum returned ebook results after normalization."`
+	Items         []LibraryItemSummary `json:"items" jsonschema:"Matching ebook items."`
+	CheckedCount  int                  `json:"checkedCount" jsonschema:"Number of library items checked."`
+	EbookCount    int                  `json:"ebookCount" jsonschema:"Number of ebook items found before query filtering."`
+	MatchedCount  int                  `json:"matchedCount" jsonschema:"Number of ebook items that matched the query."`
+	ReturnedCount int                  `json:"returnedCount" jsonschema:"Number of ebook items returned."`
+	Truncated     bool                 `json:"truncated" jsonschema:"Whether additional matches were omitted by the limit."`
+}
+
 // LibraryRawInput identifies one library for raw read-only endpoints.
 type LibraryRawInput struct {
 	LibraryID string `json:"libraryId" jsonschema:"Audiobookshelf library ID."`
@@ -551,6 +593,53 @@ type BackupsOutput struct {
 type BackupMutationOutput struct {
 	Triggered bool       `json:"triggered" jsonschema:"Whether an Audiobookshelf backup request was sent."`
 	Backup    abs.Backup `json:"backup" jsonschema:"Audiobookshelf backup returned by ABS."`
+}
+
+// EReaderDeviceSummary is a sanitized saved ereader device.
+type EReaderDeviceSummary struct {
+	Name               string   `json:"name" jsonschema:"Saved Audiobookshelf ereader device name."`
+	Email              string   `json:"email,omitempty" jsonschema:"Redacted; this server does not return saved device email addresses."`
+	AvailabilityOption string   `json:"availabilityOption,omitempty" jsonschema:"Audiobookshelf device availability option."`
+	Users              []string `json:"users,omitempty" jsonschema:"Audiobookshelf user IDs allowed for this device when ABS exposes them."`
+}
+
+// EReaderDevicesOutput is returned by abs_list_ereader_devices.
+type EReaderDevicesOutput struct {
+	Devices []EReaderDeviceSummary `json:"devices" jsonschema:"Sanitized saved ereader devices."`
+	Count   int                    `json:"count" jsonschema:"Number of devices returned."`
+}
+
+// SendEbookToDeviceInput identifies one ebook send request.
+type SendEbookToDeviceInput struct {
+	ItemID     string `json:"itemId" jsonschema:"Audiobookshelf library item ID containing an ebook file."`
+	DeviceName string `json:"deviceName" jsonschema:"Exact saved Audiobookshelf ereader device name."`
+}
+
+// SendEbookToDeviceOutput is returned by abs_send_ebook_to_device.
+type SendEbookToDeviceOutput struct {
+	Triggered  bool          `json:"triggered" jsonschema:"Whether an Audiobookshelf email request was sent."`
+	ItemID     string        `json:"itemId" jsonschema:"Audiobookshelf library item ID requested."`
+	DeviceName string        `json:"deviceName" jsonschema:"Audiobookshelf ereader device name requested."`
+	Data       abs.JSONValue `json:"data,omitempty" jsonschema:"Raw Audiobookshelf response, when returned by ABS."`
+}
+
+// SendEbookByQueryInput identifies one guarded query-based ebook send request.
+type SendEbookByQueryInput struct {
+	LibraryID     string `json:"libraryId" jsonschema:"Audiobookshelf library ID to search."`
+	Query         string `json:"query" jsonschema:"Query matched against ebook title, author, series, and filename. Must resolve exactly one ebook."`
+	DeviceName    string `json:"deviceName" jsonschema:"Exact saved Audiobookshelf ereader device name."`
+	Confirmation  string `json:"confirmation" jsonschema:"Exact confirmation text. Must be: send ebook <resolvedItemId> to <deviceName>."`
+	MaxCandidates int    `json:"maxCandidates,omitempty" jsonschema:"Maximum matching ebook candidates to inspect before treating the request as ambiguous. Defaults to 10 and is capped at 50."`
+}
+
+// SendEbookByQueryOutput is returned by abs_send_ebook_by_query.
+type SendEbookByQueryOutput struct {
+	Triggered  bool               `json:"triggered" jsonschema:"Whether an Audiobookshelf email request was sent."`
+	LibraryID  string             `json:"libraryId" jsonschema:"Audiobookshelf library ID searched."`
+	Query      string             `json:"query" jsonschema:"Query used to resolve the ebook item."`
+	DeviceName string             `json:"deviceName" jsonschema:"Audiobookshelf ereader device name requested."`
+	Item       LibraryItemSummary `json:"item" jsonschema:"Resolved ebook item sent to the device."`
+	Data       abs.JSONValue      `json:"data,omitempty" jsonschema:"Raw Audiobookshelf response, when returned by ABS."`
 }
 
 // MetadataObjectOutput is returned by abs_get_item_metadata_object.
@@ -1007,6 +1096,19 @@ func (s *Server) SearchLibrary(
 	}, nil
 }
 
+// SearchEbooks searches one library for items with ebook files.
+func (s *Server) SearchEbooks(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input SearchEbooksInput,
+) (*mcp.CallToolResult, SearchEbooksOutput, error) {
+	output, _, err := s.searchEbooks(ctx, input.LibraryID, input.Query, input.Limit)
+	if err != nil {
+		return nil, SearchEbooksOutput{}, err
+	}
+	return nil, output, nil
+}
+
 // GetLibraryStats returns raw ABS stats for one library.
 func (s *Server) GetLibraryStats(
 	ctx context.Context,
@@ -1295,6 +1397,31 @@ func (s *Server) CreateBackup(
 	return nil, BackupMutationOutput{Triggered: true, Backup: *backup}, nil
 }
 
+// ListEreaderDevices returns saved ereader device names without SMTP settings.
+func (s *Server) ListEreaderDevices(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	_ EmptyInput,
+) (*mcp.CallToolResult, EReaderDevicesOutput, error) {
+	settings, err := s.client.GetEmailSettings(ctx)
+	if err != nil {
+		return nil, EReaderDevicesOutput{}, fmt.Errorf("get ABS email settings for ereader devices: %w", err)
+	}
+	devices := make([]EReaderDeviceSummary, 0, len(settings.EReaderDevices))
+	for _, device := range settings.EReaderDevices {
+		name := strings.TrimSpace(device.Name)
+		if name == "" {
+			continue
+		}
+		devices = append(devices, EReaderDeviceSummary{
+			Name:               name,
+			AvailabilityOption: strings.TrimSpace(device.AvailabilityOption),
+			Users:              append([]string(nil), device.Users...),
+		})
+	}
+	return nil, EReaderDevicesOutput{Devices: devices, Count: len(devices)}, nil
+}
+
 // GetItemMetadataObject returns the raw ABS metadata object for one item.
 func (s *Server) GetItemMetadataObject(
 	ctx context.Context,
@@ -1538,6 +1665,97 @@ func (s *Server) ScanItem(
 		Triggered: true,
 		ItemID:    input.ItemID,
 		Result:    response.Result,
+	}, nil
+}
+
+// SendEbookToDevice sends one ebook item to a saved ereader device.
+func (s *Server) SendEbookToDevice(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input SendEbookToDeviceInput,
+) (*mcp.CallToolResult, SendEbookToDeviceOutput, error) {
+	if err := s.requireMutatingTool("abs_send_ebook_to_device"); err != nil {
+		return nil, SendEbookToDeviceOutput{}, err
+	}
+	itemID := strings.TrimSpace(input.ItemID)
+	deviceName := strings.TrimSpace(input.DeviceName)
+	if itemID == "" {
+		return nil, SendEbookToDeviceOutput{}, fmt.Errorf("itemId is required")
+	}
+	if deviceName == "" {
+		return nil, SendEbookToDeviceOutput{}, fmt.Errorf("deviceName is required")
+	}
+	data, err := s.client.SendEbookToDevice(ctx, abs.EbookDevicePayload{
+		LibraryItemID: itemID,
+		DeviceName:    deviceName,
+	})
+	if err != nil {
+		return nil, SendEbookToDeviceOutput{}, fmt.Errorf("send ABS ebook item %q to device %q: %w", itemID, deviceName, err)
+	}
+	return nil, SendEbookToDeviceOutput{
+		Triggered:  true,
+		ItemID:     itemID,
+		DeviceName: deviceName,
+		Data:       data,
+	}, nil
+}
+
+// SendEbookByQuery resolves one ebook by query and sends it after exact confirmation.
+func (s *Server) SendEbookByQuery(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input SendEbookByQueryInput,
+) (*mcp.CallToolResult, SendEbookByQueryOutput, error) {
+	if err := s.requireMutatingTool("abs_send_ebook_by_query"); err != nil {
+		return nil, SendEbookByQueryOutput{}, err
+	}
+	libraryID := strings.TrimSpace(input.LibraryID)
+	query := strings.TrimSpace(input.Query)
+	deviceName := strings.TrimSpace(input.DeviceName)
+	if libraryID == "" {
+		return nil, SendEbookByQueryOutput{}, fmt.Errorf("libraryId is required")
+	}
+	if query == "" {
+		return nil, SendEbookByQueryOutput{}, fmt.Errorf("query is required")
+	}
+	if deviceName == "" {
+		return nil, SendEbookByQueryOutput{}, fmt.Errorf("deviceName is required")
+	}
+	limit, err := normalizeQuerySendCandidateLimit(input.MaxCandidates)
+	if err != nil {
+		return nil, SendEbookByQueryOutput{}, err
+	}
+
+	searchOutput, matches, err := s.searchEbooks(ctx, libraryID, query, limit)
+	if err != nil {
+		return nil, SendEbookByQueryOutput{}, err
+	}
+	if searchOutput.MatchedCount == 0 {
+		return nil, SendEbookByQueryOutput{}, fmt.Errorf("query %q matched no ebooks in library %q", query, libraryID)
+	}
+	if searchOutput.MatchedCount != 1 {
+		return nil, SendEbookByQueryOutput{}, fmt.Errorf("query %q matched %d ebooks in library %q; call abs_search_ebooks and send by exact itemId instead", query, searchOutput.MatchedCount, libraryID)
+	}
+	item := matches[0]
+	expectedConfirmation := fmt.Sprintf("send ebook %s to %s", item.ID, deviceName)
+	if input.Confirmation != expectedConfirmation {
+		return nil, SendEbookByQueryOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+	}
+
+	data, err := s.client.SendEbookToDevice(ctx, abs.EbookDevicePayload{
+		LibraryItemID: item.ID,
+		DeviceName:    deviceName,
+	})
+	if err != nil {
+		return nil, SendEbookByQueryOutput{}, fmt.Errorf("send ABS ebook item %q to device %q: %w", item.ID, deviceName, err)
+	}
+	return nil, SendEbookByQueryOutput{
+		Triggered:  true,
+		LibraryID:  libraryID,
+		Query:      query,
+		DeviceName: deviceName,
+		Item:       summarizeItem(item),
+		Data:       data,
 	}, nil
 }
 
@@ -2270,6 +2488,19 @@ func normalizeSearchLimit(limit int) (int, error) {
 	return limit, nil
 }
 
+func normalizeQuerySendCandidateLimit(limit int) (int, error) {
+	if limit == 0 {
+		return 10, nil
+	}
+	if limit < 0 {
+		return 0, fmt.Errorf("maxCandidates must be greater than 0")
+	}
+	if limit > 50 {
+		return 50, nil
+	}
+	return limit, nil
+}
+
 func normalizeLayoutLimit(limit int) (int, error) {
 	if limit == 0 {
 		return 50, nil
@@ -2285,6 +2516,105 @@ func normalizeLayoutLimit(limit int) (int, error) {
 
 func supportedLayoutConventions() []string {
 	return []string{"auto", "author-title", "author-series-title"}
+}
+
+func (s *Server) searchEbooks(ctx context.Context, libraryID string, query string, limitInput int) (SearchEbooksOutput, []abs.LibraryItem, error) {
+	libraryID = strings.TrimSpace(libraryID)
+	query = strings.TrimSpace(query)
+	if libraryID == "" {
+		return SearchEbooksOutput{}, nil, fmt.Errorf("libraryId is required")
+	}
+	limit, err := normalizeLimit(limitInput)
+	if err != nil {
+		return SearchEbooksOutput{}, nil, err
+	}
+	items, err := s.client.GetAllLibraryItems(ctx, libraryID)
+	if err != nil {
+		return SearchEbooksOutput{}, nil, fmt.Errorf("list ABS library %q items for ebook search: %w", libraryID, err)
+	}
+
+	output := SearchEbooksOutput{
+		LibraryID:    libraryID,
+		Query:        query,
+		Limit:        limit,
+		CheckedCount: len(items),
+	}
+	matches := make([]abs.LibraryItem, 0)
+	for _, item := range items {
+		if !itemHasEbook(item) {
+			continue
+		}
+		output.EbookCount++
+		if !ebookMatchesQuery(item, query) {
+			continue
+		}
+		output.MatchedCount++
+		matches = append(matches, item)
+		if len(output.Items) < limit {
+			output.Items = append(output.Items, summarizeItem(item))
+		} else {
+			output.Truncated = true
+		}
+	}
+	output.ReturnedCount = len(output.Items)
+	return output, matches, nil
+}
+
+func itemHasEbook(item abs.LibraryItem) bool {
+	if item.Media.EbookFile != nil {
+		return true
+	}
+	for _, file := range item.LibraryFiles {
+		if strings.EqualFold(file.FileType, "ebook") {
+			return true
+		}
+	}
+	return false
+}
+
+func ebookMatchesQuery(item abs.LibraryItem, query string) bool {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return true
+	}
+	haystack := strings.ToLower(strings.Join(ebookSearchFields(item), " "))
+	for _, term := range strings.Fields(query) {
+		if !strings.Contains(haystack, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func ebookSearchFields(item abs.LibraryItem) []string {
+	fields := []string{
+		item.ID,
+		item.Media.Metadata.Title,
+		item.Media.Metadata.AuthorName,
+		item.AuthorNamesFirstLast,
+		item.Media.Metadata.SeriesName,
+		item.Media.Metadata.ISBN,
+		item.Media.Metadata.ASIN,
+	}
+	if item.Media.EbookFile != nil {
+		fields = append(fields,
+			item.Media.EbookFile.Metadata.Filename,
+			item.Media.EbookFile.Metadata.RelPath,
+			item.Media.EbookFile.Metadata.Path,
+		)
+	}
+	for _, file := range item.LibraryFiles {
+		if strings.EqualFold(file.FileType, "ebook") {
+			fields = append(fields, file.Metadata.Filename, file.Metadata.RelPath, file.Metadata.Path)
+		}
+	}
+	for _, author := range item.Media.Metadata.Authors {
+		fields = append(fields, author.Name)
+	}
+	for _, series := range item.Media.Metadata.Series {
+		fields = append(fields, series.Name)
+	}
+	return fields
 }
 
 func normalizeLayoutConvention(convention string) (string, error) {

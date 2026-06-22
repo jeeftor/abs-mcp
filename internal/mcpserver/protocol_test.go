@@ -60,6 +60,9 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	if !toolNames(tools)["abs_search_library"] {
 		t.Fatalf("expected abs_search_library in tools: %#v", tools.Tools)
 	}
+	if !toolNames(tools)["abs_search_ebooks"] {
+		t.Fatalf("expected abs_search_ebooks in tools: %#v", tools.Tools)
+	}
 	if !toolNames(tools)["abs_find_misorganized_items"] {
 		t.Fatalf("expected abs_find_misorganized_items in tools: %#v", tools.Tools)
 	}
@@ -74,6 +77,7 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 		"abs_get_item_progress",
 		"abs_list_bookmarks",
 		"abs_list_backups",
+		"abs_list_ereader_devices",
 	} {
 		if !toolNames(tools)[toolName] {
 			t.Fatalf("expected %s in tools: %#v", toolName, tools.Tools)
@@ -85,6 +89,8 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 		"abs_create_bookmark",
 		"abs_update_bookmark",
 		"abs_create_backup",
+		"abs_send_ebook_to_device",
+		"abs_send_ebook_by_query",
 		"abs_update_item_cover",
 		"abs_remove_item_cover",
 		"abs_match_item",
@@ -220,6 +226,32 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	}
 	if searchResult.IsError {
 		t.Fatalf("abs_search_library returned tool error: %#v", searchResult.Content)
+	}
+
+	ebookSearchResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_search_ebooks",
+		Arguments: map[string]any{
+			"libraryId": "lib-books",
+			"query":     "alice.epub",
+			"limit":     10,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_search_ebooks: %v", err)
+	}
+	if ebookSearchResult.IsError {
+		t.Fatalf("abs_search_ebooks returned tool error: %#v", ebookSearchResult.Content)
+	}
+
+	deviceResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_list_ereader_devices",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("call abs_list_ereader_devices: %v", err)
+	}
+	if deviceResult.IsError {
+		t.Fatalf("abs_list_ereader_devices returned tool error: %#v", deviceResult.Content)
 	}
 
 	layoutResult, err := session.CallTool(ctx, &mcp.CallToolParams{
@@ -361,6 +393,36 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	}
 	if !metadataUpdateReadOnlyResult.IsError {
 		t.Fatal("expected abs_update_item_metadata to be a tool error in read-only mode")
+	}
+
+	sendEbookReadOnlyResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_send_ebook_to_device",
+		Arguments: map[string]any{
+			"itemId":     "book-1",
+			"deviceName": "Kindle",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_send_ebook_to_device: %v", err)
+	}
+	if !sendEbookReadOnlyResult.IsError {
+		t.Fatal("expected abs_send_ebook_to_device to be a tool error in read-only mode")
+	}
+
+	sendEbookByQueryReadOnlyResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_send_ebook_by_query",
+		Arguments: map[string]any{
+			"libraryId":    "lib-books",
+			"query":        "alice.epub",
+			"deviceName":   "Kindle",
+			"confirmation": "send ebook book-1 to Kindle",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_send_ebook_by_query: %v", err)
+	}
+	if !sendEbookByQueryReadOnlyResult.IsError {
+		t.Fatal("expected abs_send_ebook_by_query to be a tool error in read-only mode")
 	}
 
 	if err := session.Close(); err != nil {

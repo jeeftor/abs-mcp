@@ -78,6 +78,12 @@ These are read-heavy, broadly useful, and fixture-testable.
   - Purpose: scoped library search.
   - Mutates: no.
 
+- `abs_search_ebooks`
+  - API basis: `GET /api/libraries/:id/items`, filtered locally to items with
+    ebook files.
+  - Purpose: find ebook item IDs before send-to-device workflows.
+  - Mutates: no.
+
 - `abs_get_library_stats`
   - API basis: `GET /api/libraries/:id/stats`.
   - Purpose: summarize library health and size.
@@ -167,6 +173,16 @@ Already exposed:
   /api/me/item/:id/bookmark`, scoped to the configured ABS user.
 - `abs_create_backup`: `POST /api/backups`, blocked by read-only mode and
   limited to backup creation only.
+- `abs_send_ebook_to_device`: `POST /api/emails/send-ebook-to-device`, blocked
+  by read-only mode and limited to sending an existing ebook item to a saved
+  device name that Audiobookshelf verifies the configured user can access.
+- `abs_send_ebook_by_query`: local ebook search plus
+  `POST /api/emails/send-ebook-to-device`, blocked by read-only mode, limited to
+  exactly one query match, and guarded by an exact confirmation string containing
+  the resolved item ID and device name.
+- `abs_list_ereader_devices`: `GET /api/emails/settings`, read-only but
+  admin-scoped in Audiobookshelf; returns only sanitized ereader device metadata
+  and intentionally omits SMTP settings and saved device email addresses.
 
 High-fit future candidates:
 
@@ -203,7 +219,8 @@ Lower-fit or admin-heavy candidates:
   workflows and should stay deferred until a concrete operator workflow is
   requested and fixture-tested.
 - `POST /api/tools/*`, cache purge, settings, auth settings, users, API keys,
-  notifications, email settings, sessions, upload, watcher, and server admin
+  notifications, email settings other than sanitized ereader device listing and
+  narrow ebook send routes, sessions, upload, watcher, and server admin
   endpoints. These should stay deferred unless an explicit admin workflow is
   requested and tested in the fixture.
 

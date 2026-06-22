@@ -67,6 +67,25 @@ func TestListBackups(t *testing.T) {
 	}
 }
 
+func TestListEreaderDevices(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.ListEreaderDevices(context.Background(), nil, EmptyInput{})
+	if err != nil {
+		t.Fatalf("ListEreaderDevices failed: %v", err)
+	}
+	if output.Count != 2 {
+		t.Fatalf("Count = %d, want 2", output.Count)
+	}
+	if output.Devices[0].Name != "Kindle" {
+		t.Fatalf("first device name = %q, want Kindle", output.Devices[0].Name)
+	}
+	if output.Devices[0].Email != "" {
+		t.Fatalf("device email = %q, want redacted empty email", output.Devices[0].Email)
+	}
+}
+
 func TestCreateBackup(t *testing.T) {
 	t.Parallel()
 
@@ -217,6 +236,44 @@ func TestListLibraryItemsRejectsBadInput(t *testing.T) {
 		Offset:    1,
 	}); err == nil {
 		t.Fatal("expected unaligned offset error")
+	}
+}
+
+func TestSearchEbooks(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	_, output, err := server.SearchEbooks(context.Background(), nil, SearchEbooksInput{
+		LibraryID: "lib-books",
+		Query:     "alice.epub",
+		Limit:     10,
+	})
+	if err != nil {
+		t.Fatalf("SearchEbooks failed: %v", err)
+	}
+	if output.CheckedCount != 3 {
+		t.Fatalf("CheckedCount = %d, want 3", output.CheckedCount)
+	}
+	if output.MatchedCount != 1 || output.ReturnedCount != 1 {
+		t.Fatalf("Matched/Returned = %d/%d, want 1/1", output.MatchedCount, output.ReturnedCount)
+	}
+	if output.Items[0].ID != "book-1" {
+		t.Fatalf("first item ID = %q, want book-1", output.Items[0].ID)
+	}
+}
+
+func TestSearchEbooksRejectsBadInput(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	if _, _, err := server.SearchEbooks(context.Background(), nil, SearchEbooksInput{}); err == nil {
+		t.Fatal("expected missing libraryId error")
+	}
+	if _, _, err := server.SearchEbooks(context.Background(), nil, SearchEbooksInput{
+		LibraryID: "lib-books",
+		Limit:     -1,
+	}); err == nil {
+		t.Fatal("expected negative limit error")
 	}
 }
 
@@ -909,6 +966,142 @@ func TestScanItemRequiresID(t *testing.T) {
 	}
 }
 
+func TestSendEbookToDeviceBlockedInReadOnlyMode(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	if _, _, err := server.SendEbookToDevice(context.Background(), nil, SendEbookToDeviceInput{
+		ItemID:     "book-1",
+		DeviceName: "Kindle",
+	}); err == nil || !strings.Contains(err.Error(), "--read-only=false") {
+		t.Fatalf("expected actionable read-only error, got %v", err)
+	}
+}
+
+func TestSendEbookToDevice(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+	_, output, err := server.SendEbookToDevice(context.Background(), nil, SendEbookToDeviceInput{
+		ItemID:     " book-1 ",
+		DeviceName: " Kindle ",
+	})
+	if err != nil {
+		t.Fatalf("SendEbookToDevice failed: %v", err)
+	}
+	if !output.Triggered {
+		t.Fatal("Triggered = false, want true")
+	}
+	if output.ItemID != "book-1" {
+		t.Fatalf("ItemID = %q, want book-1", output.ItemID)
+	}
+	if output.DeviceName != "Kindle" {
+		t.Fatalf("DeviceName = %q, want Kindle", output.DeviceName)
+	}
+	if client.sendEbookPayload.LibraryItemID != "book-1" {
+		t.Fatalf("LibraryItemID = %q, want book-1", client.sendEbookPayload.LibraryItemID)
+	}
+	if client.sendEbookPayload.DeviceName != "Kindle" {
+		t.Fatalf("DeviceName payload = %q, want Kindle", client.sendEbookPayload.DeviceName)
+	}
+}
+
+func TestSendEbookToDeviceRequiresInput(t *testing.T) {
+	t.Parallel()
+
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, newFakeABSClient())
+	for _, input := range []SendEbookToDeviceInput{
+		{},
+		{ItemID: "book-1"},
+		{DeviceName: "Kindle"},
+	} {
+		if _, _, err := server.SendEbookToDevice(context.Background(), nil, input); err == nil {
+			t.Fatalf("expected validation error for %#v", input)
+		}
+	}
+}
+
+func TestSendEbookByQuery(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+	_, output, err := server.SendEbookByQuery(context.Background(), nil, SendEbookByQueryInput{
+		LibraryID:     "lib-books",
+		Query:         "alice.epub",
+		DeviceName:    " Kindle ",
+		Confirmation:  "send ebook book-1 to Kindle",
+		MaxCandidates: 10,
+	})
+	if err != nil {
+		t.Fatalf("SendEbookByQuery failed: %v", err)
+	}
+	if !output.Triggered {
+		t.Fatal("Triggered = false, want true")
+	}
+	if output.Item.ID != "book-1" {
+		t.Fatalf("Item.ID = %q, want book-1", output.Item.ID)
+	}
+	if output.DeviceName != "Kindle" {
+		t.Fatalf("DeviceName = %q, want Kindle", output.DeviceName)
+	}
+	if client.sendEbookPayload.LibraryItemID != "book-1" || client.sendEbookPayload.DeviceName != "Kindle" {
+		t.Fatalf("send payload = %#v, want book-1/Kindle", client.sendEbookPayload)
+	}
+}
+
+func TestSendEbookByQueryRequiresConfirmationForResolvedItem(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+	_, _, err := server.SendEbookByQuery(context.Background(), nil, SendEbookByQueryInput{
+		LibraryID:    "lib-books",
+		Query:        "alice.epub",
+		DeviceName:   "Kindle",
+		Confirmation: "send it",
+	})
+	if err == nil || !strings.Contains(err.Error(), "send ebook book-1 to Kindle") {
+		t.Fatalf("expected exact confirmation error, got %v", err)
+	}
+	if client.sendEbookPayload.LibraryItemID != "" {
+		t.Fatalf("sent despite bad confirmation: %#v", client.sendEbookPayload)
+	}
+}
+
+func TestSendEbookByQueryRejectsAmbiguousMatches(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: false}, client)
+	if _, _, err := server.SendEbookByQuery(context.Background(), nil, SendEbookByQueryInput{
+		LibraryID:    "lib-books",
+		Query:        "alice",
+		DeviceName:   "Kindle",
+		Confirmation: "send ebook book-1 to Kindle",
+	}); err == nil || !strings.Contains(err.Error(), "matched 2 ebooks") {
+		t.Fatalf("expected ambiguous match error, got %v", err)
+	}
+	if client.sendEbookPayload.LibraryItemID != "" {
+		t.Fatalf("sent despite ambiguous match: %#v", client.sendEbookPayload)
+	}
+}
+
+func TestSendEbookByQueryBlockedInReadOnlyMode(t *testing.T) {
+	t.Parallel()
+
+	server := newTestServer()
+	if _, _, err := server.SendEbookByQuery(context.Background(), nil, SendEbookByQueryInput{
+		LibraryID:    "lib-books",
+		Query:        "alice",
+		DeviceName:   "Kindle",
+		Confirmation: "send ebook book-1 to Kindle",
+	}); err == nil || !strings.Contains(err.Error(), "--read-only=false") {
+		t.Fatalf("expected actionable read-only error, got %v", err)
+	}
+}
+
 func TestUpdateItemCover(t *testing.T) {
 	t.Parallel()
 
@@ -1500,6 +1693,7 @@ type fakeABSClient struct {
 	updateBookmarkID            string
 	updateBookmarkPayload       abs.BookmarkPayload
 	createBackupCalled          bool
+	sendEbookPayload            abs.EbookDevicePayload
 	scanLibraryID               string
 	scanForce                   bool
 	scanItemID                  string
@@ -1583,7 +1777,43 @@ func newFakeABSClient() *fakeABSClient {
 					LibraryID: "lib-books",
 					Path:      "/books/alice",
 					MediaType: "book",
-					Media:     abs.Media{Metadata: abs.Metadata{Title: "Alice", AuthorName: "Lewis Carroll"}},
+					Media: abs.Media{
+						Metadata: abs.Metadata{Title: "Alice", AuthorName: "Lewis Carroll"},
+						EbookFile: &abs.EbookFile{LibraryFile: abs.LibraryFile{
+							FileType: "ebook",
+							Metadata: abs.FileMetadata{
+								Filename: "alice.epub",
+								Path:     "/books/alice/alice.epub",
+								RelPath:  "alice/alice.epub",
+								Size:     456,
+							},
+						}},
+					},
+				},
+				{
+					ID:        "book-2",
+					LibraryID: "lib-books",
+					Path:      "/books/alice-two",
+					MediaType: "book",
+					Media: abs.Media{
+						Metadata: abs.Metadata{Title: "Alice Sequel", AuthorName: "Lewis Carroll"},
+						EbookFile: &abs.EbookFile{LibraryFile: abs.LibraryFile{
+							FileType: "ebook",
+							Metadata: abs.FileMetadata{
+								Filename: "alice-two.epub",
+								Path:     "/books/alice-two/alice-two.epub",
+								RelPath:  "alice-two/alice-two.epub",
+								Size:     789,
+							},
+						}},
+					},
+				},
+				{
+					ID:        "audio-only-book",
+					LibraryID: "lib-books",
+					Path:      "/books/audio-only",
+					MediaType: "book",
+					Media:     abs.Media{Metadata: abs.Metadata{Title: "Audio Only", AuthorName: "Narrator"}},
 				},
 			},
 		},
@@ -1605,6 +1835,26 @@ func (f *fakeABSClient) CreateBackup(context.Context) (*abs.Backup, error) {
 	}
 	f.createBackupCalled = true
 	return &abs.Backup{ID: "backup-created", Filename: "backup-created.audiobookshelf"}, nil
+}
+
+func (f *fakeABSClient) SendEbookToDevice(_ context.Context, payload abs.EbookDevicePayload) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.sendEbookPayload = payload
+	return map[string]any{"success": true}, nil
+}
+
+func (f *fakeABSClient) GetEmailSettings(context.Context) (*abs.EmailSettings, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return &abs.EmailSettings{
+		EReaderDevices: []abs.EReaderDevice{
+			{Name: "Kindle", Email: "kindle@example.com", AvailabilityOption: "specificUsers", Users: []string{"user-1"}},
+			{Name: "Kobo", Email: "kobo@example.com", AvailabilityOption: "allUsers"},
+		},
+	}, nil
 }
 
 func (f *fakeABSClient) GetCurrentUser(context.Context) (*abs.User, error) {

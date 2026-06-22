@@ -119,6 +119,25 @@ type Backup struct {
 	UpdatedAt int64  `json:"updatedAt,omitempty"`
 }
 
+// EbookDevicePayload is the source-verified body for sending an ebook to a saved ereader device.
+type EbookDevicePayload struct {
+	LibraryItemID string `json:"libraryItemId"`
+	DeviceName    string `json:"deviceName"`
+}
+
+// EmailSettings contains the source-backed subset of ABS email settings used by this MCP server.
+type EmailSettings struct {
+	EReaderDevices []EReaderDevice `json:"ereaderDevices,omitempty"`
+}
+
+// EReaderDevice represents an Audiobookshelf saved ereader email target.
+type EReaderDevice struct {
+	Name               string   `json:"name"`
+	Email              string   `json:"email,omitempty"`
+	AvailabilityOption string   `json:"availabilityOption,omitempty"`
+	Users              []string `json:"users,omitempty"`
+}
+
 // ItemMetadataPayload is the source-verified body for item metadata updates.
 type ItemMetadataPayload struct {
 	Metadata *ItemMetadataFields `json:"metadata,omitempty"`

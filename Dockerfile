@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 ARG BUILDER_IMAGE=golang:1.26-bookworm
-ARG VERSION=0.3.0
+ARG VERSION=0.4.0
 
 FROM ${BUILDER_IMAGE} AS build
 

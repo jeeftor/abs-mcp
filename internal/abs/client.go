@@ -361,6 +361,26 @@ func (c *Client) CreateBackup(ctx context.Context) (*Backup, error) {
 	return &backup, nil
 }
 
+// SendEbookToDevice asks ABS to email one library item's ebook file to a saved ereader device.
+func (c *Client) SendEbookToDevice(ctx context.Context, payload EbookDevicePayload) (JSONValue, error) {
+	var response any
+	if err := c.doJSON(ctx, http.MethodPost, "/api/emails/send-ebook-to-device", nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// GetEmailSettings returns ABS email settings for admin-capable tokens.
+func (c *Client) GetEmailSettings(ctx context.Context) (*EmailSettings, error) {
+	var response struct {
+		Settings EmailSettings `json:"settings"`
+	}
+	if err := c.getJSON(ctx, "/api/emails/settings", nil, &response); err != nil {
+		return nil, err
+	}
+	return &response.Settings, nil
+}
+
 // CreateCollection creates one ABS collection with an initial book list.
 func (c *Client) CreateCollection(ctx context.Context, payload CollectionPayload) (JSONValue, error) {
 	var response any

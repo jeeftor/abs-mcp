@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 - 2026-06-22
+
+### Added
+- Added ebook delivery tools for sending Audiobookshelf ebooks to saved ereader devices.
+- Added ebook-only library search and sanitized ereader device listing helpers.
+- Added a guarded query-based ebook send workflow that requires exactly one match and an exact confirmation string before delivery.
+
+### Improved
+- Updated MCP tool documentation and protocol coverage for the ebook delivery workflow.
+
 ## 0.3.0 - 2026-06-16
 
 ### Added

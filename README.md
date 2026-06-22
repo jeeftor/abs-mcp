@@ -123,7 +123,7 @@ docker run --rm -i \
   -e ABS_BASE_URL=http://host.docker.internal:13378 \
   -e ABS_API_KEY=... \
   -e ABS_READ_ONLY=true \
-  ghcr.io/jeeftor/abs-mcp:0.3.0
+  ghcr.io/jeeftor/abs-mcp:0.4.0
 ```
 
 For client-specific snippets, see [Client Configs](#client-configs).
@@ -143,6 +143,7 @@ Read-only tools:
 - `abs_list_library_items`
 - `abs_get_library_item`
 - `abs_search_library`
+- `abs_search_ebooks`
 - `abs_get_library_stats`
 - `abs_get_filter_data`
 - `abs_list_library_authors`
@@ -155,6 +156,7 @@ Read-only tools:
 - `abs_get_item_progress`
 - `abs_list_bookmarks`
 - `abs_list_backups`
+- `abs_list_ereader_devices`
 - `abs_get_item_metadata_object`
 - `abs_find_misorganized_items`
 
@@ -168,6 +170,8 @@ Implemented mutating tools:
 - `abs_create_bookmark`
 - `abs_update_bookmark`
 - `abs_create_backup`
+- `abs_send_ebook_to_device`
+- `abs_send_ebook_by_query`
 - `abs_update_item_cover`
 - `abs_remove_item_cover`
 - `abs_update_item_chapters`
@@ -191,7 +195,8 @@ Planned mutating tools advertised for discovery:
 Mutating tools are blocked by default because `ABS_READ_ONLY` defaults to
 `true`. Scan tools, issue cleanup, `abs_update_item_cover`,
 `abs_remove_item_cover`, `abs_update_item_chapters`, typed item metadata,
-current-user progress/bookmark writes, and non-destructive collection/playlist
+current-user progress/bookmark writes, ebook send-to-device email delivery,
+guarded query-based ebook delivery, and non-destructive collection/playlist
 create, update, and add-item tools are implemented. Remaining planned mutating
 tools, including item matching,
 delete/remove collection and playlist operations, and item track updates, are
@@ -334,6 +339,8 @@ These tools can mutate Audiobookshelf state and require `ABS_READ_ONLY=false`:
 - `abs_create_bookmark`
 - `abs_update_bookmark`
 - `abs_create_backup`
+- `abs_send_ebook_to_device`
+- `abs_send_ebook_by_query`
 - `abs_match_item` (planned; not implemented)
 - `abs_update_item_tracks` (planned; not implemented)
 - `abs_create_collection`
@@ -497,7 +504,7 @@ Docker-based stdio config:
         "ABS_API_KEY",
         "-e",
         "ABS_READ_ONLY=true",
-        "ghcr.io/jeeftor/abs-mcp:0.3.0"
+        "ghcr.io/jeeftor/abs-mcp:0.4.0"
       ],
       "env": {
         "ABS_API_KEY": "..."
@@ -514,7 +521,7 @@ docker run --rm -i \
   -e ABS_BASE_URL=http://host.docker.internal:13388 \
   -e ABS_API_KEY=... \
   -e ABS_READ_ONLY=true \
-  ghcr.io/jeeftor/abs-mcp:0.3.0
+  ghcr.io/jeeftor/abs-mcp:0.4.0
 ```
 
 With Cloudflare Access headers and a corporate/private CA bundle:
@@ -527,7 +534,7 @@ docker run --rm -i \
   -e ABS_TLS_CA_CERT_FILE=/run/secrets/corporate-ca.pem \
   -v /path/to/headers.json:/run/secrets/abs-headers.json:ro \
   -v /path/to/corporate-ca.pem:/run/secrets/corporate-ca.pem:ro \
-  ghcr.io/jeeftor/abs-mcp:0.3.0
+  ghcr.io/jeeftor/abs-mcp:0.4.0
 ```
 
 Build a local image:

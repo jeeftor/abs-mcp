@@ -260,6 +260,84 @@ func TestClientCreateBackup(t *testing.T) {
 	}
 }
 
+func TestClientSendEbookToDevice(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/emails/send-ebook-to-device" {
+			t.Fatalf("path = %s, want /api/emails/send-ebook-to-device", request.URL.Path)
+		}
+		if request.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", request.Method)
+		}
+		var payload EbookDevicePayload
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		if payload.LibraryItemID != "book-1" {
+			t.Fatalf("libraryItemId = %q, want book-1", payload.LibraryItemID)
+		}
+		if payload.DeviceName != "Kindle" {
+			t.Fatalf("deviceName = %q, want Kindle", payload.DeviceName)
+		}
+		writeJSON(t, writer, map[string]any{"success": true})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	data, err := client.SendEbookToDevice(context.Background(), EbookDevicePayload{
+		LibraryItemID: "book-1",
+		DeviceName:    "Kindle",
+	})
+	if err != nil {
+		t.Fatalf("SendEbookToDevice failed: %v", err)
+	}
+	if data == nil {
+		t.Fatal("expected response data")
+	}
+}
+
+func TestClientGetEmailSettings(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/emails/settings" {
+			t.Fatalf("path = %s, want /api/emails/settings", request.URL.Path)
+		}
+		if request.Method != http.MethodGet {
+			t.Fatalf("method = %s, want GET", request.Method)
+		}
+		writeJSON(t, writer, map[string]EmailSettings{
+			"settings": {
+				EReaderDevices: []EReaderDevice{
+					{Name: "Kindle", Email: "kindle@example.com", AvailabilityOption: "specificUsers", Users: []string{"user-1"}},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	settings, err := client.GetEmailSettings(context.Background())
+	if err != nil {
+		t.Fatalf("GetEmailSettings failed: %v", err)
+	}
+	if len(settings.EReaderDevices) != 1 {
+		t.Fatalf("device count = %d, want 1", len(settings.EReaderDevices))
+	}
+	if settings.EReaderDevices[0].Name != "Kindle" {
+		t.Fatalf("device name = %q, want Kindle", settings.EReaderDevices[0].Name)
+	}
+}
+
 func TestClientGetAllLibraryItemsPaginates(t *testing.T) {
 	t.Parallel()
 
