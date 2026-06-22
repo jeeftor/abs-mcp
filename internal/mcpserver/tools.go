@@ -2753,6 +2753,11 @@ func (s *Server) searchEbooks(ctx context.Context, libraryID string, query strin
 	if err != nil {
 		return SearchEbooksOutput{}, nil, fmt.Errorf("list ABS library %q items for ebook search: %w", libraryID, err)
 	}
+	library, err := s.client.GetLibrary(ctx, libraryID)
+	if err != nil {
+		return SearchEbooksOutput{}, nil, fmt.Errorf("get ABS library %q for ebook search: %w", libraryID, err)
+	}
+	libraryEbookFallback := libraryLikelyContainsEbooks(*library)
 
 	output := SearchEbooksOutput{
 		LibraryID:    libraryID,
@@ -2762,7 +2767,7 @@ func (s *Server) searchEbooks(ctx context.Context, libraryID string, query strin
 	}
 	matches := make([]abs.LibraryItem, 0)
 	for _, item := range items {
-		if !itemHasEbook(item) {
+		if !itemHasEbook(item) && !libraryEbookFallback {
 			continue
 		}
 		output.EbookCount++
@@ -2810,6 +2815,8 @@ func ebookMatchesQuery(item abs.LibraryItem, query string) bool {
 func ebookSearchFields(item abs.LibraryItem) []string {
 	fields := []string{
 		item.ID,
+		item.Path,
+		item.RelPath,
 		item.Media.Metadata.Title,
 		item.Media.Metadata.AuthorName,
 		item.AuthorNamesFirstLast,
@@ -2846,6 +2853,21 @@ func isEbookLibraryFile(file abs.LibraryFile) bool {
 		switch strings.ToLower(path.Ext(value)) {
 		case ".epub", ".mobi", ".azw3", ".pdf":
 			return true
+		}
+	}
+	return false
+}
+
+func libraryLikelyContainsEbooks(library abs.Library) bool {
+	if strings.Contains(strings.ToLower(library.Name), "ebook") {
+		return true
+	}
+	for _, folder := range library.Folders {
+		for _, value := range []string{folder.Path, folder.FullPath} {
+			value = strings.ToLower(strings.TrimSpace(value))
+			if value == "/books" || strings.HasSuffix(value, "/books") {
+				return true
+			}
 		}
 	}
 	return false

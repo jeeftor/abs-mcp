@@ -297,6 +297,35 @@ func TestSearchEbooksRecognizesEbookFileExtensions(t *testing.T) {
 	}
 }
 
+func TestSearchEbooksRecognizesEbookLibraryItemsWithoutFileDetails(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	client.items["lib-books"] = []abs.LibraryItem{
+		{
+			ID:        "book-fixture",
+			LibraryID: "lib-books",
+			Path:      "/books/to-sort/austen",
+			RelPath:   "to-sort/austen",
+			MediaType: "book",
+			Media:     abs.Media{Metadata: abs.Metadata{Title: "Austen Fixture", AuthorName: "Jane Austen"}},
+		},
+	}
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+
+	_, output, err := server.SearchEbooks(context.Background(), nil, SearchEbooksInput{
+		LibraryID: "lib-books",
+		Query:     "austen",
+		Limit:     10,
+	})
+	if err != nil {
+		t.Fatalf("SearchEbooks failed: %v", err)
+	}
+	if output.MatchedCount != 1 || output.Items[0].ID != "book-fixture" {
+		t.Fatalf("unexpected ebook-library fallback search output: %#v", output)
+	}
+}
+
 func TestSearchEbooksRejectsBadInput(t *testing.T) {
 	t.Parallel()
 
