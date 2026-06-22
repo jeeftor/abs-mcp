@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2 - 2026-06-22
+
+### Fixed
+- Accept the current Audiobookshelf backup-create response envelope while keeping compatibility with older direct-backup responses.
+
 ## 0.4.1 - 2026-06-22
 
 ### Fixed

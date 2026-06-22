@@ -123,7 +123,7 @@ docker run --rm -i \
   -e ABS_BASE_URL=http://host.docker.internal:13378 \
   -e ABS_API_KEY=... \
   -e ABS_READ_ONLY=true \
-  ghcr.io/jeeftor/abs-mcp:0.4.1
+  ghcr.io/jeeftor/abs-mcp:0.4.2
 ```
 
 For client-specific snippets, see [Client Configs](#client-configs).
@@ -504,7 +504,7 @@ Docker-based stdio config:
         "ABS_API_KEY",
         "-e",
         "ABS_READ_ONLY=true",
-        "ghcr.io/jeeftor/abs-mcp:0.4.1"
+        "ghcr.io/jeeftor/abs-mcp:0.4.2"
       ],
       "env": {
         "ABS_API_KEY": "..."
@@ -521,7 +521,7 @@ docker run --rm -i \
   -e ABS_BASE_URL=http://host.docker.internal:13388 \
   -e ABS_API_KEY=... \
   -e ABS_READ_ONLY=true \
-  ghcr.io/jeeftor/abs-mcp:0.4.1
+  ghcr.io/jeeftor/abs-mcp:0.4.2
 ```
 
 With Cloudflare Access headers and a corporate/private CA bundle:
@@ -534,7 +534,7 @@ docker run --rm -i \
   -e ABS_TLS_CA_CERT_FILE=/run/secrets/corporate-ca.pem \
   -v /path/to/headers.json:/run/secrets/abs-headers.json:ro \
   -v /path/to/corporate-ca.pem:/run/secrets/corporate-ca.pem:ro \
-  ghcr.io/jeeftor/abs-mcp:0.4.1
+  ghcr.io/jeeftor/abs-mcp:0.4.2
 ```
 
 Build a local image:

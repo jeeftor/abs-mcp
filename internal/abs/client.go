@@ -354,11 +354,11 @@ func (c *Client) ListBackups(ctx context.Context) ([]Backup, error) {
 
 // CreateBackup asks ABS to create a server backup.
 func (c *Client) CreateBackup(ctx context.Context) (*Backup, error) {
-	var backup Backup
-	if err := c.doJSON(ctx, http.MethodPost, "/api/backups", nil, nil, &backup); err != nil {
+	var response backupMutationResponse
+	if err := c.doJSON(ctx, http.MethodPost, "/api/backups", nil, nil, &response); err != nil {
 		return nil, err
 	}
-	return &backup, nil
+	return response.Backup(), nil
 }
 
 // SendEbookToDevice asks ABS to email one library item's ebook file to a saved ereader device.

@@ -291,6 +291,39 @@ func TestClientCreateBackup(t *testing.T) {
 	}
 }
 
+func TestClientCreateBackupAcceptsEnvelope(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/backups" {
+			t.Fatalf("path = %s, want /api/backups", request.URL.Path)
+		}
+		if request.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", request.Method)
+		}
+		writeJSON(t, writer, map[string][]Backup{
+			"backups": {
+				{ID: "backup-old", Filename: "backup-old.audiobookshelf"},
+				{ID: "backup-new", Filename: "backup-new.audiobookshelf"},
+			},
+		})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	backup, err := client.CreateBackup(context.Background())
+	if err != nil {
+		t.Fatalf("CreateBackup failed: %v", err)
+	}
+	if backup.ID != "backup-new" {
+		t.Fatalf("backup = %#v", backup)
+	}
+}
+
 func TestClientSendEbookToDevice(t *testing.T) {
 	t.Parallel()
 

@@ -142,6 +142,35 @@ func (r *backupListResponse) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type backupMutationResponse struct {
+	DirectBackup Backup
+	Backups      []Backup
+}
+
+func (r *backupMutationResponse) UnmarshalJSON(data []byte) error {
+	var envelope struct {
+		Backups []Backup `json:"backups"`
+	}
+	if err := json.Unmarshal(data, &envelope); err == nil && envelope.Backups != nil {
+		r.Backups = envelope.Backups
+		return nil
+	}
+
+	var backup Backup
+	if err := json.Unmarshal(data, &backup); err != nil {
+		return err
+	}
+	r.DirectBackup = backup
+	return nil
+}
+
+func (r backupMutationResponse) Backup() *Backup {
+	if len(r.Backups) > 0 {
+		return &r.Backups[len(r.Backups)-1]
+	}
+	return &r.DirectBackup
+}
+
 // EbookDevicePayload is the source-verified body for sending an ebook to a saved ereader device.
 type EbookDevicePayload struct {
 	LibraryItemID string `json:"libraryItemId"`
