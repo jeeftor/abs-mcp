@@ -430,8 +430,8 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("call abs_send_ebook_to_device: %v", err)
 	}
-	if !sendEbookReadOnlyResult.IsError {
-		t.Fatal("expected abs_send_ebook_to_device to be a tool error in read-only mode")
+	if sendEbookReadOnlyResult.IsError {
+		t.Fatal("expected abs_send_ebook_to_device to work in read-only mode")
 	}
 
 	sendEbookByQueryReadOnlyResult, err := session.CallTool(ctx, &mcp.CallToolParams{
@@ -446,8 +446,8 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("call abs_send_ebook_by_query: %v", err)
 	}
-	if !sendEbookByQueryReadOnlyResult.IsError {
-		t.Fatal("expected abs_send_ebook_by_query to be a tool error in read-only mode")
+	if sendEbookByQueryReadOnlyResult.IsError {
+		t.Fatal("expected abs_send_ebook_by_query to work in read-only mode")
 	}
 
 	if err := session.Close(); err != nil {

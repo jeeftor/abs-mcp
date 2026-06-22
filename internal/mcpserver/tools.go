@@ -229,12 +229,12 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_send_ebook_to_device",
 		Title:       "Send Audiobookshelf ebook to device",
-		Description: "Send one Audiobookshelf ebook item to a saved ereader device by device name. Blocked when ABS_READ_ONLY is true.",
+		Description: "Send one Audiobookshelf ebook item to a saved ereader device by device name. This does not mutate Audiobookshelf library state.",
 	}, s.SendEbookToDevice)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_send_ebook_by_query",
 		Title:       "Send Audiobookshelf ebook by query",
-		Description: "Resolve exactly one ebook search match, require an exact confirmation string, then send it to a saved ereader device. Blocked when ABS_READ_ONLY is true.",
+		Description: "Resolve exactly one ebook search match, require an exact confirmation string, then send it to a saved ereader device. This does not mutate Audiobookshelf library state.",
 	}, s.SendEbookByQuery)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_get_item_metadata_object",
@@ -1853,9 +1853,6 @@ func (s *Server) SendEbookToDevice(
 	_ *mcp.CallToolRequest,
 	input SendEbookToDeviceInput,
 ) (*mcp.CallToolResult, SendEbookToDeviceOutput, error) {
-	if err := s.requireMutatingTool("abs_send_ebook_to_device"); err != nil {
-		return nil, SendEbookToDeviceOutput{}, err
-	}
 	itemID := strings.TrimSpace(input.ItemID)
 	deviceName := strings.TrimSpace(input.DeviceName)
 	if itemID == "" {
@@ -1885,9 +1882,6 @@ func (s *Server) SendEbookByQuery(
 	_ *mcp.CallToolRequest,
 	input SendEbookByQueryInput,
 ) (*mcp.CallToolResult, SendEbookByQueryOutput, error) {
-	if err := s.requireMutatingTool("abs_send_ebook_by_query"); err != nil {
-		return nil, SendEbookByQueryOutput{}, err
-	}
 	libraryID := strings.TrimSpace(input.LibraryID)
 	query := strings.TrimSpace(input.Query)
 	deviceName := strings.TrimSpace(input.DeviceName)

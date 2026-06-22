@@ -1093,15 +1093,20 @@ func TestScanItemRequiresID(t *testing.T) {
 	}
 }
 
-func TestSendEbookToDeviceBlockedInReadOnlyMode(t *testing.T) {
+func TestSendEbookToDeviceWorksInReadOnlyMode(t *testing.T) {
 	t.Parallel()
 
-	server := newTestServer()
-	if _, _, err := server.SendEbookToDevice(context.Background(), nil, SendEbookToDeviceInput{
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.SendEbookToDevice(context.Background(), nil, SendEbookToDeviceInput{
 		ItemID:     "book-1",
 		DeviceName: "Kindle",
-	}); err == nil || !strings.Contains(err.Error(), "--read-only=false") {
-		t.Fatalf("expected actionable read-only error, got %v", err)
+	})
+	if err != nil {
+		t.Fatalf("SendEbookToDevice failed in read-only mode: %v", err)
+	}
+	if !output.Triggered || client.sendEbookPayload.LibraryItemID != "book-1" {
+		t.Fatalf("unexpected read-only send output=%#v payload=%#v", output, client.sendEbookPayload)
 	}
 }
 
@@ -1306,17 +1311,22 @@ func TestSendEbookByQueryRejectsAmbiguousMatches(t *testing.T) {
 	}
 }
 
-func TestSendEbookByQueryBlockedInReadOnlyMode(t *testing.T) {
+func TestSendEbookByQueryWorksInReadOnlyMode(t *testing.T) {
 	t.Parallel()
 
-	server := newTestServer()
-	if _, _, err := server.SendEbookByQuery(context.Background(), nil, SendEbookByQueryInput{
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.SendEbookByQuery(context.Background(), nil, SendEbookByQueryInput{
 		LibraryID:    "lib-books",
-		Query:        "alice",
+		Query:        "alice.epub",
 		DeviceName:   "Kindle",
 		Confirmation: "send ebook book-1 to Kindle",
-	}); err == nil || !strings.Contains(err.Error(), "--read-only=false") {
-		t.Fatalf("expected actionable read-only error, got %v", err)
+	})
+	if err != nil {
+		t.Fatalf("SendEbookByQuery failed in read-only mode: %v", err)
+	}
+	if !output.Triggered || output.Item.ID != "book-1" || client.sendEbookPayload.LibraryItemID != "book-1" {
+		t.Fatalf("unexpected read-only query send output=%#v payload=%#v", output, client.sendEbookPayload)
 	}
 }
 

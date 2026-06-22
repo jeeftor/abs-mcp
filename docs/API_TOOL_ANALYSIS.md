@@ -186,13 +186,16 @@ Already exposed:
   /api/me/item/:id/bookmark`, scoped to the configured ABS user.
 - `abs_create_backup`: `POST /api/backups`, blocked by read-only mode and
   limited to backup creation only.
-- `abs_send_ebook_to_device`: `POST /api/emails/send-ebook-to-device`, blocked
-  by read-only mode and limited to sending an existing ebook item to a saved
-  device name that Audiobookshelf verifies the configured user can access.
+- `abs_send_ebook_to_device`: `POST /api/emails/send-ebook-to-device`, allowed
+  in read-only mode because it sends outbound email but does not mutate
+  Audiobookshelf library, metadata, backup, progress, collection, or playlist
+  state. It is limited to sending an existing ebook item to a saved device name
+  that Audiobookshelf verifies the configured user can access.
 - `abs_send_ebook_by_query`: local ebook search plus
-  `POST /api/emails/send-ebook-to-device`, blocked by read-only mode, limited to
-  exactly one query match, and guarded by an exact confirmation string containing
-  the resolved item ID and device name.
+  `POST /api/emails/send-ebook-to-device`, allowed in read-only mode for the
+  same outbound-delivery reason, limited to exactly one query match, and guarded
+  by an exact confirmation string containing the resolved item ID and device
+  name.
 - `abs_preview_ebook_device_send`: read-only preview for device send; returns
   compact ebook candidates, sanitized device names, readiness, confirmation when
   one saved device name matches, and the next send tool without sending to the

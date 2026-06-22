@@ -16,7 +16,7 @@ maintenance workflows.
 
 - [Highlights](#highlights)
 - [Audiobook Organizer Compatibility](#audiobook-organizer-compatibility)
-- [AI Generated Comparison - Last updated 2026-06-03](#ai-generated-comparison---last-updated-2026-06-03)
+- [AI Generated Comparison - Last updated 2026-06-22](#ai-generated-comparison---last-updated-2026-06-22)
 - [Quick Start](#quick-start)
 - [MCP Surface](#mcp-surface)
 - [Configuration](#configuration)
@@ -57,19 +57,24 @@ problems from Audiobookshelf's perspective, then use Audiobook Organizer to
 clean up or standardize the underlying files.
 
 <!-- AI-GENERATED-COMPARISON:START -->
-## AI Generated Comparison - Last updated 2026-06-03
+## AI Generated Comparison - Last updated 2026-06-22
 
-This comparison is generated from public project READMEs, registry pages, and
-this repository's current docs. It is descriptive rather than a recommendation.
+This comparison is generated from public GitHub repository metadata, public
+project READMEs, registry/package searches, and this repository's current docs.
+It is descriptive rather than a recommendation.
 
 Mutating versus non-mutating coverage:
 
 - `jeeftor/abs-mcp` exposes read-only inspection, search, author, series,
-  collection, current-user progress/bookmark/listening reads, metadata-object,
-  layout-audit, resources, and prompts by default. Scan, cleanup, cover,
-  chapter, and non-destructive collection/playlist create/update/add tools can
-  mutate Audiobookshelf state only when `ABS_READ_ONLY=false`; destructive
-  operations also require exact confirmation strings.
+  collection, current-user progress/bookmark/listening reads, backups, ereader
+  device discovery, ebook send preview, metadata-object, layout-audit,
+  resources, and prompts by default. Ebook device-send tools perform outbound
+  delivery but do not mutate Audiobookshelf library, metadata, backup,
+  progress, collection, or playlist state, so they remain usable in read-only
+  mode. Scan, cleanup, cover, chapter, progress/bookmark writes, backup
+  creation, metadata, and collection/playlist create/update/add/delete/remove
+  tools can mutate Audiobookshelf state only when `ABS_READ_ONLY=false`;
+  destructive operations also require exact confirmation strings.
 - `michaeldvinci/audiobookshelf-mcp` exposes a broad management surface with
   read tools plus mutating operations such as library, collection, playlist,
   progress, and backup actions. No public README evidence was found for a
@@ -82,25 +87,45 @@ Mutating versus non-mutating coverage:
   Audiobookshelf OpenAPI material; mutating coverage and safety gates were not
   determinable from the public README.
 
-Comparison follow-up notes:
+Sources checked in this pass:
 
-- Current-user listening stats and listening-session read tools are now exposed
-  as read-only progress-adjacent tools.
-- [#4](https://github.com/jeeftor/abs-mcp/issues/4): Investigate safely gated
-  backup and server-admin MCP tools. At least one public peer exposes backup
-  creation, but any admin operation here should be source-verified,
-  fixture-tested, and gated.
+- Public GitHub repositories:
+  [`michaeldvinci/audiobookshelf-mcp`](https://github.com/michaeldvinci/audiobookshelf-mcp),
+  [`sandymac/audiobookshelf-mcp`](https://github.com/sandymac/audiobookshelf-mcp),
+  [`sierikov/audiobookshelf-mcp`](https://github.com/sierikov/audiobookshelf-mcp),
+  [`ForceConstant/audiobookshelf_mcp`](https://github.com/ForceConstant/audiobookshelf_mcp),
+  and [`schmidt-software/mcp-audiobookshelf`](https://github.com/schmidt-software/mcp-audiobookshelf).
+- Search checks for additional npm and PyPI packages did not surface a
+  credible Audiobookshelf-specific MCP server beyond the GitHub targets above.
 
 | Server | Shape | Confirmed strengths | Safety posture | Difference from `jeeftor/abs-mcp` |
 | --- | --- | --- | --- | --- |
-| [`michaeldvinci/audiobookshelf-mcp`](https://github.com/michaeldvinci/audiobookshelf-mcp) | Go stdio server with release binaries. | Broad general Audiobookshelf management, including libraries, items, authors, collections, playlists, user info, sessions, podcasts, progress updates, and backups. | Exposes mutating tools; no global default read-only gate was found in the public README during this comparison pass. | Broader generic management surface, but less conservative. This server now overlaps typed metadata and collection/playlist create and add-item coverage, while adding default read-only gating, destructive confirmations, a misorganized-file audit, source-backed API inventory, MCP resources/prompts, and guarded cover/chapter repair tooling. |
-| [`sandymac/audiobookshelf-mcp`](https://github.com/sandymac/audiobookshelf-mcp) | Rust server with stdio plus HTTP/SSE support. | Read/query surface for libraries, search, progress, stats, recent sessions, and optional progress/bookmark mutations. | Mutating tools are disabled by default and must be explicitly enabled. HTTP mode recommends bearer auth and TLS proxying. | Similar safety model. It has stats/session tools; this server now overlaps progress/bookmark mutation coverage while adding optional Streamable HTTP, source-backed API inventory, resources/prompts, organizer-oriented audits, fixture workflows, and guarded metadata/repair/catalog mutation tools. |
-| [`sierikov/audiobookshelf-mcp`](https://github.com/sierikov/audiobookshelf-mcp) | Go server with read-oriented tooling and release binaries. | Read-only browsing and search across libraries, items, progress, stats, sessions, series, authors, and collections. | Public README presents it as read-only. | Overlaps this server's read-only browsing surface, including progress, author, series, and collection reads, but no public evidence was found for controlled repair/catalog mutation workflows, source-backed API inventory, MCP prompts/resources, or organizer-focused audit tooling. |
-| [`ForceConstant/audiobookshelf_mcp`](https://github.com/ForceConstant/audiobookshelf_mcp) | Generated OpenAPI MCP bridge with streamable HTTP and Docker-oriented files. | Broad generated API exposure from Audiobookshelf OpenAPI material. | Not determinable from the public README; generated API exposure may include mutating endpoints, but the README does not enumerate safety controls. | Less curated and less operator-specific. This project intentionally exposes bounded, typed tools with read-only gating and fixture-backed behavior checks instead of exposing every route directly. |
+| [`michaeldvinci/audiobookshelf-mcp`](https://github.com/michaeldvinci/audiobookshelf-mcp) | Go stdio server with release binaries; GitHub metadata showed latest release `0.0.5` on 2025-11-11. | Broad general Audiobookshelf management, including libraries, items, authors, collections, playlists, user info, sessions, podcasts, progress updates, and backups. | Exposes mutating tools; no global default read-only gate was found in the public README during this comparison pass. | Broader generic management surface, but less conservative. This server overlaps more typed repair/catalog workflows now while adding default read-only gating, destructive confirmations, source-backed API inventory, MCP resources/prompts, organizer-oriented audit tooling, and fixture-backed behavior checks. |
+| [`sandymac/audiobookshelf-mcp`](https://github.com/sandymac/audiobookshelf-mcp) | Rust server with stdio plus HTTP/SSE support. | Read/query surface for libraries, search, progress, stats, recent sessions, and optional progress/bookmark mutations. | Mutating tools are disabled by default and must be explicitly enabled. HTTP mode recommends bearer auth and TLS proxying. | Similar safety model. It keeps the mutating surface narrow; this server adds source-backed API inventory, resources/prompts, organizer-oriented audits, fixture workflows, typed metadata/cover/chapter/catalog tools, and explicit destructive confirmations. |
+| [`sierikov/audiobookshelf-mcp`](https://github.com/sierikov/audiobookshelf-mcp) | Go server with read-oriented tooling, release binaries, `.mcpb` Claude Desktop bundles, and an MCP Registry entry. | Read-only browsing and search across libraries, items, progress, stats, sessions, series, authors, and collections. | Public README presents all tools as read-only with no writes, playback control, or user management. | Overlaps this server's read-only browsing surface, including progress, author, series, and collection reads, but no public evidence was found for controlled repair/catalog mutation workflows, source-backed API inventory, MCP prompts/resources, organizer-focused audit tooling, or Docker fixture workflows. |
+| [`ForceConstant/audiobookshelf_mcp`](https://github.com/ForceConstant/audiobookshelf_mcp) | Generated OpenAPI MCP bridge with Streamable HTTP on port 3000 and Docker-oriented files. | Broad generated API exposure from Audiobookshelf OpenAPI material. | Not determinable from the public README; generated API exposure may include mutating endpoints, but the README does not enumerate safety controls. | Less curated and less operator-specific. This project intentionally exposes bounded, typed tools with read-only gating and fixture-backed behavior checks instead of exposing every route directly. |
 
 Weak or placeholder hits, such as
 [`schmidt-software/mcp-audiobookshelf`](https://github.com/schmidt-software/mcp-audiobookshelf),
 were excluded when no implementation or feature evidence was available.
+
+### Candidate gaps from this comparison
+
+- Candidate: evaluate a bounded podcast workflow. Public peers expose podcast
+  browsing or episode checks; this server currently has no dedicated podcast
+  tools beyond generic item/library APIs.
+- Candidate: evaluate library creation/update workflows. One public peer exposes
+  library creation, but this remains an admin-level operation that would need
+  source verification, fixture coverage, `ABS_READ_ONLY=false`, and destructive
+  confirmations for any delete/remove path.
+- Candidate: evaluate `.mcpb` desktop bundle packaging. One public peer ships
+  Claude Desktop `.mcpb` bundles; this server currently publishes binaries,
+  Docker/GHCR artifacts, and MCP Registry metadata instead.
+- Existing candidate still relevant:
+  [#5](https://github.com/jeeftor/abs-mcp/issues/5) tracks Streamable HTTP
+  transport support. Public peers show both HTTP/SSE and Streamable HTTP shapes,
+  so the issue should be reconciled with the current optional Streamable HTTP
+  implementation and any remaining hardening or documentation gaps.
 <!-- AI-GENERATED-COMPARISON:END -->
 
 ## Quick Start
@@ -133,7 +158,7 @@ For client-specific snippets, see [Client Configs](#client-configs).
 The server exposes all registered tools in the README, grouped by whether they
 can change Audiobookshelf state.
 
-Read-only tools:
+Read-only and non-ABS-mutating tools:
 
 - `abs_health_check`
 - `abs_list_libraries`
@@ -158,6 +183,8 @@ Read-only tools:
 - `abs_list_bookmarks`
 - `abs_list_backups`
 - `abs_list_ereader_devices`
+- `abs_send_ebook_to_device`
+- `abs_send_ebook_by_query`
 - `abs_get_item_metadata_object`
 - `abs_find_misorganized_items`
 
@@ -171,8 +198,6 @@ Implemented mutating tools:
 - `abs_create_bookmark`
 - `abs_update_bookmark`
 - `abs_create_backup`
-- `abs_send_ebook_to_device`
-- `abs_send_ebook_by_query`
 - `abs_update_item_cover`
 - `abs_remove_item_cover`
 - `abs_update_item_chapters`
@@ -193,12 +218,14 @@ Planned mutating tools advertised for discovery:
 - `abs_match_item`
 - `abs_update_item_tracks`
 
-Mutating tools are blocked by default because `ABS_READ_ONLY` defaults to
-`true`. Scan tools, issue cleanup, `abs_update_item_cover`,
-`abs_remove_item_cover`, `abs_update_item_chapters`, typed item metadata,
-current-user progress/bookmark writes, ebook send-to-device delivery,
-guarded query-based device send, and non-destructive collection/playlist
-create, update, add-item, delete, and remove-item tools are implemented.
+Tools that mutate Audiobookshelf state are blocked by default because
+`ABS_READ_ONLY` defaults to `true`. Scan tools, issue cleanup, cover updates,
+chapter updates, typed item metadata, current-user progress/bookmark writes,
+backup creation, and collection/playlist create, update, add-item, delete, and
+remove-item tools are implemented mutating operations. Ebook send-to-device
+delivery and guarded query-based device send perform outbound delivery but do
+not mutate Audiobookshelf library, metadata, backup, progress, collection, or
+playlist state, so they are allowed while read-only mode is enabled.
 Use `abs_preview_ebook_device_send` first for device-send UX: it is
 read-only, returns compact ebook candidates, sanitized device names, `ready`,
 the exact confirmation string when one ebook and one saved device name resolve,
