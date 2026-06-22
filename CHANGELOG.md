@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 - 2026-06-22
+
+### Fixed
+- Accept the current Audiobookshelf backup-list response envelope while keeping compatibility with older raw-array responses.
+
 ## 0.4.0 - 2026-06-22
 
 ### Added

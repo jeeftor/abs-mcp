@@ -345,11 +345,11 @@ func (c *Client) UpdateBookmark(ctx context.Context, itemID string, payload Book
 
 // ListBackups returns backup records visible to the authenticated ABS user.
 func (c *Client) ListBackups(ctx context.Context) ([]Backup, error) {
-	var backups []Backup
-	if err := c.getJSON(ctx, "/api/backups", nil, &backups); err != nil {
+	var response backupListResponse
+	if err := c.getJSON(ctx, "/api/backups", nil, &response); err != nil {
 		return nil, err
 	}
-	return backups, nil
+	return response.Backups, nil
 }
 
 // CreateBackup asks ABS to create a server backup.

@@ -1,5 +1,7 @@
 package abs
 
+import "encoding/json"
+
 // JSONValue is an arbitrary JSON value returned by ABS for endpoints whose
 // response shape is broad or source-version dependent.
 type JSONValue any
@@ -117,6 +119,27 @@ type Backup struct {
 	Size      int64  `json:"size,omitempty"`
 	CreatedAt int64  `json:"createdAt,omitempty"`
 	UpdatedAt int64  `json:"updatedAt,omitempty"`
+}
+
+type backupListResponse struct {
+	Backups []Backup `json:"backups"`
+}
+
+func (r *backupListResponse) UnmarshalJSON(data []byte) error {
+	var envelope struct {
+		Backups []Backup `json:"backups"`
+	}
+	if err := json.Unmarshal(data, &envelope); err == nil && envelope.Backups != nil {
+		r.Backups = envelope.Backups
+		return nil
+	}
+
+	var backups []Backup
+	if err := json.Unmarshal(data, &backups); err != nil {
+		return err
+	}
+	r.Backups = backups
+	return nil
 }
 
 // EbookDevicePayload is the source-verified body for sending an ebook to a saved ereader device.

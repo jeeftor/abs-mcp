@@ -232,6 +232,37 @@ func TestClientListBackups(t *testing.T) {
 	}
 }
 
+func TestClientListBackupsAcceptsEnvelope(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/backups" {
+			t.Fatalf("path = %s, want /api/backups", request.URL.Path)
+		}
+		writeJSON(t, writer, map[string]any{
+			"backups": []Backup{
+				{ID: "backup-2", Filename: "backup-2.audiobookshelf", CreatedAt: 789, Size: 123},
+			},
+			"backupLocation":   "/metadata/backups",
+			"backupPathEnvSet": false,
+		})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	backups, err := client.ListBackups(context.Background())
+	if err != nil {
+		t.Fatalf("ListBackups failed: %v", err)
+	}
+	if len(backups) != 1 || backups[0].ID != "backup-2" {
+		t.Fatalf("backups = %#v", backups)
+	}
+}
+
 func TestClientCreateBackup(t *testing.T) {
 	t.Parallel()
 
