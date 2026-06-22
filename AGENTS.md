@@ -37,6 +37,7 @@ Build a high-quality Model Context Protocol server for Audiobookshelf. The serve
 - Prompts should be limited to repeatable operator workflows such as library audit, scan troubleshooting, or API update review.
 - Tool names should be stable, explicit, and namespaced with `abs_`.
 - Each tool schema must define required inputs, optional inputs, output shape, error cases, and whether it can mutate ABS state.
+- Always target token-use efficiency when it does not compromise server usability. Prefer bounded result sets, compact summaries, truncation flags, and opt-in raw/detail tools over returning large raw ABS payloads by default.
 - Mutating tools must be opt-in and should require IDs rather than fuzzy names where possible.
 - Destructive tools, including delete, remove, purge, overwrite, replace, and broad batch operations, must require an explicit confirmation input. Prefer an exact phrase that includes the relevant ABS ID, plus expected-count checks when affected records can be previewed.
 - Long operations such as scans should return job/status information and provide a separate status/read tool instead of blocking indefinitely.

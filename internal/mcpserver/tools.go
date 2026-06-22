@@ -224,7 +224,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_preview_ebook_device_send",
 		Title:       "Preview Audiobookshelf ebook device send",
-		Description: "Resolve ebook and ereader-device candidates for a guarded send workflow without sending email.",
+		Description: "Resolve ebook and ereader-device candidates for a guarded send workflow without sending to the device.",
 	}, s.PreviewEbookDeviceSend)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_send_ebook_to_device",
@@ -680,7 +680,7 @@ type SendEbookToDeviceInput struct {
 
 // SendEbookToDeviceOutput is returned by abs_send_ebook_to_device.
 type SendEbookToDeviceOutput struct {
-	Triggered  bool          `json:"triggered" jsonschema:"Whether an Audiobookshelf email request was sent."`
+	Triggered  bool          `json:"triggered" jsonschema:"Whether an Audiobookshelf device-send request was sent."`
 	ItemID     string        `json:"itemId" jsonschema:"Audiobookshelf library item ID requested."`
 	DeviceName string        `json:"deviceName" jsonschema:"Audiobookshelf ereader device name requested."`
 	Data       abs.JSONValue `json:"data,omitempty" jsonschema:"Raw Audiobookshelf response, when returned by ABS."`
@@ -697,7 +697,7 @@ type SendEbookByQueryInput struct {
 
 // SendEbookByQueryOutput is returned by abs_send_ebook_by_query.
 type SendEbookByQueryOutput struct {
-	Triggered  bool               `json:"triggered" jsonschema:"Whether an Audiobookshelf email request was sent."`
+	Triggered  bool               `json:"triggered" jsonschema:"Whether an Audiobookshelf device-send request was sent."`
 	LibraryID  string             `json:"libraryId" jsonschema:"Audiobookshelf library ID searched."`
 	Query      string             `json:"query" jsonschema:"Query used to resolve the ebook item."`
 	DeviceName string             `json:"deviceName" jsonschema:"Audiobookshelf ereader device name requested."`
@@ -1777,7 +1777,7 @@ func (s *Server) ScanItem(
 	}, nil
 }
 
-// PreviewEbookDeviceSend resolves ebook and device candidates without sending email.
+// PreviewEbookDeviceSend resolves ebook and device candidates without sending to a device.
 func (s *Server) PreviewEbookDeviceSend(
 	ctx context.Context,
 	_ *mcp.CallToolRequest,
