@@ -665,7 +665,18 @@ func (c *Client) doJSON(ctx context.Context, method string, path string, query u
 		io.Copy(io.Discard, response.Body)
 		return nil
 	}
-	if err := json.NewDecoder(response.Body).Decode(output); err != nil && !errors.Is(err, io.EOF) {
+	body, readErr := io.ReadAll(response.Body)
+	if readErr != nil {
+		return fmt.Errorf("read ABS %s response: %w", request.URL.Path, readErr)
+	}
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return nil
+	}
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(output); err != nil && !errors.Is(err, io.EOF) {
+		if target, ok := output.(*any); ok {
+			*target = map[string]any{"message": strings.TrimSpace(string(body))}
+			return nil
+		}
 		return fmt.Errorf("decode ABS %s response: %w", request.URL.Path, err)
 	}
 	return nil
@@ -695,7 +706,18 @@ func (c *Client) deleteJSON(ctx context.Context, path string, output any) error 
 		io.Copy(io.Discard, response.Body)
 		return nil
 	}
-	if err := json.NewDecoder(response.Body).Decode(output); err != nil && !errors.Is(err, io.EOF) {
+	body, readErr := io.ReadAll(response.Body)
+	if readErr != nil {
+		return fmt.Errorf("read ABS %s response: %w", request.URL.Path, readErr)
+	}
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return nil
+	}
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(output); err != nil && !errors.Is(err, io.EOF) {
+		if target, ok := output.(*any); ok {
+			*target = map[string]any{"message": strings.TrimSpace(string(body))}
+			return nil
+		}
 		return fmt.Errorf("decode ABS %s response: %w", request.URL.Path, err)
 	}
 	return nil

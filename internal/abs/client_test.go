@@ -1467,6 +1467,34 @@ func TestClientDeleteCollection(t *testing.T) {
 	}
 }
 
+func TestClientDeleteCollectionAcceptsPlainTextResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodDelete {
+			t.Fatalf("method = %s, want DELETE", request.Method)
+		}
+		if request.URL.Path != "/api/collections/col-1" {
+			t.Fatalf("path = %s, want /api/collections/col-1", request.URL.Path)
+		}
+		writer.Header().Set("Content-Type", "text/plain")
+		_, _ = writer.Write([]byte("OK"))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	response, err := client.DeleteCollection(context.Background(), "col-1")
+	if err != nil {
+		t.Fatalf("DeleteCollection failed: %v", err)
+	}
+	if response.(map[string]any)["message"] != "OK" {
+		t.Fatalf("unexpected response: %#v", response)
+	}
+}
+
 func TestClientRemoveCollectionItem(t *testing.T) {
 	t.Parallel()
 
