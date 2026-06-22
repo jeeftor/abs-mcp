@@ -290,6 +290,31 @@ func (c *Client) GetItemsInProgress(ctx context.Context, limit int) (JSONValue, 
 	return response, nil
 }
 
+// GetListeningStats returns source-backed current-user listening statistics.
+func (c *Client) GetListeningStats(ctx context.Context) (JSONValue, error) {
+	var response any
+	if err := c.getJSON(ctx, "/api/me/listening-stats", nil, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// ListListeningSessions returns one bounded page of current-user listening sessions.
+func (c *Client) ListListeningSessions(ctx context.Context, limit int, page int) (JSONValue, error) {
+	query := url.Values{}
+	if limit > 0 {
+		query.Set("itemsPerPage", fmt.Sprintf("%d", limit))
+	}
+	if page > 0 {
+		query.Set("page", fmt.Sprintf("%d", page))
+	}
+	var response any
+	if err := c.getJSON(ctx, "/api/me/listening-sessions", query, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 // GetItemProgress returns current-user progress for one library item or episode.
 func (c *Client) GetItemProgress(ctx context.Context, itemID string, episodeID string) (*MediaProgress, error) {
 	path := fmt.Sprintf("/api/me/progress/%s", url.PathEscape(itemID))
@@ -411,6 +436,26 @@ func (c *Client) AddCollectionItem(ctx context.Context, collectionID string, ite
 	return response, nil
 }
 
+// DeleteCollection deletes one ABS collection.
+func (c *Client) DeleteCollection(ctx context.Context, collectionID string) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/collections/%s", url.PathEscape(collectionID))
+	if err := c.deleteJSON(ctx, path, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// RemoveCollectionItem removes one library item from an ABS collection.
+func (c *Client) RemoveCollectionItem(ctx context.Context, collectionID string, itemID string) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/collections/%s/book/%s", url.PathEscape(collectionID), url.PathEscape(itemID))
+	if err := c.deleteJSON(ctx, path, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 // CreatePlaylist creates one ABS playlist.
 func (c *Client) CreatePlaylist(ctx context.Context, payload PlaylistPayload) (JSONValue, error) {
 	var response any
@@ -430,11 +475,38 @@ func (c *Client) UpdatePlaylist(ctx context.Context, playlistID string, payload 
 	return response, nil
 }
 
+// DeletePlaylist deletes one ABS playlist.
+func (c *Client) DeletePlaylist(ctx context.Context, playlistID string) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf("/api/playlists/%s", url.PathEscape(playlistID))
+	if err := c.deleteJSON(ctx, path, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 // AddPlaylistItem adds one item or podcast episode to an ABS playlist.
 func (c *Client) AddPlaylistItem(ctx context.Context, playlistID string, payload PlaylistItemPayload) (JSONValue, error) {
 	var response any
 	path := fmt.Sprintf("/api/playlists/%s/item", url.PathEscape(playlistID))
 	if err := c.doJSON(ctx, http.MethodPost, path, nil, payload, &response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// RemovePlaylistItem removes one item or podcast episode from an ABS playlist.
+func (c *Client) RemovePlaylistItem(ctx context.Context, playlistID string, payload PlaylistItemPayload) (JSONValue, error) {
+	var response any
+	path := fmt.Sprintf(
+		"/api/playlists/%s/item/%s",
+		url.PathEscape(playlistID),
+		url.PathEscape(payload.LibraryItemID),
+	)
+	if payload.EpisodeID != "" {
+		path = fmt.Sprintf("%s/%s", path, url.PathEscape(payload.EpisodeID))
+	}
+	if err := c.deleteJSON(ctx, path, &response); err != nil {
 		return nil, err
 	}
 	return response, nil
@@ -576,6 +648,36 @@ func (c *Client) doJSON(ctx context.Context, method string, path string, query u
 		return fmt.Errorf("create ABS request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
+	c.applyHeaders(request)
+
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return fmt.Errorf("call ABS %s: %w", request.URL.Path, err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
+		return fmt.Errorf("ABS %s returned HTTP %d: %s", request.URL.Path, response.StatusCode, c.redact(strings.TrimSpace(string(body))))
+	}
+
+	if output == nil {
+		io.Copy(io.Discard, response.Body)
+		return nil
+	}
+	if err := json.NewDecoder(response.Body).Decode(output); err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("decode ABS %s response: %w", request.URL.Path, err)
+	}
+	return nil
+}
+
+func (c *Client) deleteJSON(ctx context.Context, path string, output any) error {
+	requestURL := c.baseURL.ResolveReference(&url.URL{Path: path})
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, requestURL.String(), nil)
+	if err != nil {
+		return fmt.Errorf("create ABS request: %w", err)
+	}
 	c.applyHeaders(request)
 
 	response, err := c.httpClient.Do(request)

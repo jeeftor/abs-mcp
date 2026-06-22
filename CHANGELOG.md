@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 - 2026-06-22
+
+### Added
+- Added read-only current-user listening statistics and listening-session MCP tools.
+- Implemented guarded collection and playlist delete/remove tools with read-only mode enforcement and exact confirmation strings.
+
+### Improved
+- Updated MCP protocol coverage, tool documentation, and comparison notes for the expanded listening and catalog lifecycle surface.
+
 ## 0.4.2 - 2026-06-22
 
 ### Fixed

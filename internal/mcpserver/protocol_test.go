@@ -74,6 +74,8 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 		"abs_list_collections",
 		"abs_get_collection",
 		"abs_get_items_in_progress",
+		"abs_get_listening_stats",
+		"abs_list_listening_sessions",
 		"abs_get_item_progress",
 		"abs_list_bookmarks",
 		"abs_list_backups",
@@ -312,6 +314,8 @@ func TestMCPProtocolListsAndCallsTools(t *testing.T) {
 		{name: "abs_list_collections", args: map[string]any{}},
 		{name: "abs_get_collection", args: map[string]any{"id": "col-1", "include": []any{"items"}}},
 		{name: "abs_get_items_in_progress", args: map[string]any{"limit": 3}},
+		{name: "abs_get_listening_stats", args: map[string]any{}},
+		{name: "abs_list_listening_sessions", args: map[string]any{"limit": 1000, "page": 2}},
 		{name: "abs_get_item_progress", args: map[string]any{"itemId": "item-1"}},
 		{name: "abs_list_bookmarks", args: map[string]any{"itemId": "item-1"}},
 	} {
@@ -845,6 +849,45 @@ func TestMCPProtocolItemMutatingTools(t *testing.T) {
 		t.Fatalf("unexpected add collection output: %#v", addCollectionOutput)
 	}
 
+	deleteCollectionResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_delete_collection",
+		Arguments: map[string]any{
+			"collectionId": "col-1",
+			"confirmation": "delete collection col-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_delete_collection: %v", err)
+	}
+	if deleteCollectionResult.IsError {
+		t.Fatalf("abs_delete_collection returned tool error: %#v", deleteCollectionResult.Content)
+	}
+	var deleteCollectionOutput CatalogMutationOutput
+	marshalStructuredOutput(t, deleteCollectionResult.StructuredContent, &deleteCollectionOutput)
+	if !deleteCollectionOutput.Triggered || deleteCollectionOutput.ID != "col-1" {
+		t.Fatalf("unexpected delete collection output: %#v", deleteCollectionOutput)
+	}
+
+	removeCollectionResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_remove_collection_item",
+		Arguments: map[string]any{
+			"collectionId": "col-1",
+			"itemId":       "item-1",
+			"confirmation": "remove item item-1 from collection col-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_remove_collection_item: %v", err)
+	}
+	if removeCollectionResult.IsError {
+		t.Fatalf("abs_remove_collection_item returned tool error: %#v", removeCollectionResult.Content)
+	}
+	var removeCollectionOutput CatalogMutationOutput
+	marshalStructuredOutput(t, removeCollectionResult.StructuredContent, &removeCollectionOutput)
+	if !removeCollectionOutput.Triggered || removeCollectionOutput.ID != "col-1" {
+		t.Fatalf("unexpected remove collection output: %#v", removeCollectionOutput)
+	}
+
 	createPlaylistResult, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "abs_create_playlist",
 		Arguments: map[string]any{
@@ -907,6 +950,46 @@ func TestMCPProtocolItemMutatingTools(t *testing.T) {
 		t.Fatalf("unexpected add playlist output: %#v", addPlaylistOutput)
 	}
 
+	deletePlaylistResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_delete_playlist",
+		Arguments: map[string]any{
+			"playlistId":   "pl-1",
+			"confirmation": "delete playlist pl-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_delete_playlist: %v", err)
+	}
+	if deletePlaylistResult.IsError {
+		t.Fatalf("abs_delete_playlist returned tool error: %#v", deletePlaylistResult.Content)
+	}
+	var deletePlaylistOutput CatalogMutationOutput
+	marshalStructuredOutput(t, deletePlaylistResult.StructuredContent, &deletePlaylistOutput)
+	if !deletePlaylistOutput.Triggered || deletePlaylistOutput.ID != "pl-1" {
+		t.Fatalf("unexpected delete playlist output: %#v", deletePlaylistOutput)
+	}
+
+	removePlaylistResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_remove_playlist_item",
+		Arguments: map[string]any{
+			"playlistId":   "pl-1",
+			"itemId":       "item-1",
+			"episodeId":    "episode-1",
+			"confirmation": "remove item item-1 from playlist pl-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_remove_playlist_item: %v", err)
+	}
+	if removePlaylistResult.IsError {
+		t.Fatalf("abs_remove_playlist_item returned tool error: %#v", removePlaylistResult.Content)
+	}
+	var removePlaylistOutput CatalogMutationOutput
+	marshalStructuredOutput(t, removePlaylistResult.StructuredContent, &removePlaylistOutput)
+	if !removePlaylistOutput.Triggered || removePlaylistOutput.ID != "pl-1" {
+		t.Fatalf("unexpected remove playlist output: %#v", removePlaylistOutput)
+	}
+
 	removeResult, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "abs_remove_item_cover",
 		Arguments: map[string]any{
@@ -929,8 +1012,11 @@ func TestMCPProtocolItemMutatingTools(t *testing.T) {
 	if fakeClient.updateItemCoverID != "item-1" || fakeClient.updateItemChaptersID != "item-1" || fakeClient.removeItemCoverID != "item-1" {
 		t.Fatalf("unexpected fake client calls: cover=%q chapters=%q remove=%q", fakeClient.updateItemCoverID, fakeClient.updateItemChaptersID, fakeClient.removeItemCoverID)
 	}
-	if fakeClient.addCollectionID != "col-1" || fakeClient.addPlaylistID != "pl-1" {
-		t.Fatalf("unexpected catalog mutation calls: collection=%q playlist=%q", fakeClient.addCollectionID, fakeClient.addPlaylistID)
+	if fakeClient.addCollectionID != "col-1" || fakeClient.deleteCollectionID != "col-1" || fakeClient.removeCollectionID != "col-1" {
+		t.Fatalf("unexpected collection mutation calls: add=%q delete=%q remove=%q", fakeClient.addCollectionID, fakeClient.deleteCollectionID, fakeClient.removeCollectionID)
+	}
+	if fakeClient.addPlaylistID != "pl-1" || fakeClient.deletePlaylistID != "pl-1" || fakeClient.removePlaylistID != "pl-1" {
+		t.Fatalf("unexpected playlist mutation calls: add=%q delete=%q remove=%q", fakeClient.addPlaylistID, fakeClient.deletePlaylistID, fakeClient.removePlaylistID)
 	}
 
 	if err := session.Close(); err != nil {

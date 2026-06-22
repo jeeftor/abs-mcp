@@ -550,6 +550,66 @@ func TestClientGetLibraryFilterData(t *testing.T) {
 	}
 }
 
+func TestClientGetListeningStats(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/me/listening-stats" {
+			t.Fatalf("path = %s, want /api/me/listening-stats", request.URL.Path)
+		}
+		if request.Method != http.MethodGet {
+			t.Fatalf("method = %s, want GET", request.Method)
+		}
+		writeJSON(t, writer, map[string]any{"totalTime": 123})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	response, err := client.GetListeningStats(context.Background())
+	if err != nil {
+		t.Fatalf("GetListeningStats failed: %v", err)
+	}
+	if response.(map[string]any)["totalTime"].(float64) != 123 {
+		t.Fatalf("unexpected stats response: %#v", response)
+	}
+}
+
+func TestClientListListeningSessions(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/me/listening-sessions" {
+			t.Fatalf("path = %s, want /api/me/listening-sessions", request.URL.Path)
+		}
+		if request.Method != http.MethodGet {
+			t.Fatalf("method = %s, want GET", request.Method)
+		}
+		if request.URL.Query().Get("itemsPerPage") != "7" {
+			t.Fatalf("itemsPerPage = %q, want 7", request.URL.Query().Get("itemsPerPage"))
+		}
+		if request.URL.Query().Get("page") != "2" {
+			t.Fatalf("page = %q, want 2", request.URL.Query().Get("page"))
+		}
+		writeJSON(t, writer, map[string]any{"sessions": []map[string]any{{"id": "session-1"}}})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	response, err := client.ListListeningSessions(context.Background(), 7, 2)
+	if err != nil {
+		t.Fatalf("ListListeningSessions failed: %v", err)
+	}
+	if response.(map[string]any)["sessions"].([]any)[0].(map[string]any)["id"] != "session-1" {
+		t.Fatalf("unexpected sessions response: %#v", response)
+	}
+}
+
 func TestClientListLibraryAuthors(t *testing.T) {
 	t.Parallel()
 
@@ -1380,6 +1440,60 @@ func TestClientAddCollectionItem(t *testing.T) {
 	}
 }
 
+func TestClientDeleteCollection(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodDelete {
+			t.Fatalf("method = %s, want DELETE", request.Method)
+		}
+		if request.URL.Path != "/api/collections/col-1" {
+			t.Fatalf("path = %s, want /api/collections/col-1", request.URL.Path)
+		}
+		writeJSON(t, writer, map[string]any{"id": "col-1"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	response, err := client.DeleteCollection(context.Background(), "col-1")
+	if err != nil {
+		t.Fatalf("DeleteCollection failed: %v", err)
+	}
+	if response.(map[string]any)["id"] != "col-1" {
+		t.Fatalf("unexpected response: %#v", response)
+	}
+}
+
+func TestClientRemoveCollectionItem(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodDelete {
+			t.Fatalf("method = %s, want DELETE", request.Method)
+		}
+		if request.URL.Path != "/api/collections/col-1/book/item-1" {
+			t.Fatalf("path = %s, want /api/collections/col-1/book/item-1", request.URL.Path)
+		}
+		writeJSON(t, writer, map[string]any{"id": "col-1"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	response, err := client.RemoveCollectionItem(context.Background(), "col-1", "item-1")
+	if err != nil {
+		t.Fatalf("RemoveCollectionItem failed: %v", err)
+	}
+	if response == nil {
+		t.Fatal("expected collection remove response")
+	}
+}
+
 func TestClientCreatePlaylist(t *testing.T) {
 	t.Parallel()
 
@@ -1486,6 +1600,87 @@ func TestClientAddPlaylistItem(t *testing.T) {
 	}
 	if response == nil {
 		t.Fatal("expected playlist add response")
+	}
+}
+
+func TestClientDeletePlaylist(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodDelete {
+			t.Fatalf("method = %s, want DELETE", request.Method)
+		}
+		if request.URL.Path != "/api/playlists/pl-1" {
+			t.Fatalf("path = %s, want /api/playlists/pl-1", request.URL.Path)
+		}
+		writeJSON(t, writer, map[string]any{"id": "pl-1"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	response, err := client.DeletePlaylist(context.Background(), "pl-1")
+	if err != nil {
+		t.Fatalf("DeletePlaylist failed: %v", err)
+	}
+	if response == nil {
+		t.Fatal("expected playlist delete response")
+	}
+}
+
+func TestClientRemovePlaylistItem(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodDelete {
+			t.Fatalf("method = %s, want DELETE", request.Method)
+		}
+		if request.URL.Path != "/api/playlists/pl-1/item/item-1/episode-1" {
+			t.Fatalf("path = %s, want /api/playlists/pl-1/item/item-1/episode-1", request.URL.Path)
+		}
+		writeJSON(t, writer, map[string]any{"id": "pl-1"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	response, err := client.RemovePlaylistItem(context.Background(), "pl-1", PlaylistItemPayload{LibraryItemID: "item-1", EpisodeID: "episode-1"})
+	if err != nil {
+		t.Fatalf("RemovePlaylistItem failed: %v", err)
+	}
+	if response == nil {
+		t.Fatal("expected playlist remove response")
+	}
+}
+
+func TestClientRemovePlaylistItemOmitsBlankEpisode(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodDelete {
+			t.Fatalf("method = %s, want DELETE", request.Method)
+		}
+		if request.URL.Path != "/api/playlists/pl-1/item/item-1" {
+			t.Fatalf("path = %s, want /api/playlists/pl-1/item/item-1", request.URL.Path)
+		}
+		writeJSON(t, writer, map[string]any{"id": "pl-1"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	response, err := client.RemovePlaylistItem(context.Background(), "pl-1", PlaylistItemPayload{LibraryItemID: "item-1"})
+	if err != nil {
+		t.Fatalf("RemovePlaylistItem failed: %v", err)
+	}
+	if response == nil {
+		t.Fatal("expected playlist remove response")
 	}
 }
 

@@ -65,7 +65,7 @@ this repository's current docs. It is descriptive rather than a recommendation.
 Mutating versus non-mutating coverage:
 
 - `jeeftor/abs-mcp` exposes read-only inspection, search, author, series,
-  collection, current-user progress/bookmark reads, metadata-object,
+  collection, current-user progress/bookmark/listening reads, metadata-object,
   layout-audit, resources, and prompts by default. Scan, cleanup, cover,
   chapter, and non-destructive collection/playlist create/update/add tools can
   mutate Audiobookshelf state only when `ABS_READ_ONLY=false`; destructive
@@ -82,12 +82,10 @@ Mutating versus non-mutating coverage:
   Audiobookshelf OpenAPI material; mutating coverage and safety gates were not
   determinable from the public README.
 
-Candidate gaps from this comparison:
+Comparison follow-up notes:
 
-- Candidate: add current-user listening stats and recent-session read tools.
-  Other servers expose progress-adjacent stats/session inspection; this server
-  now exposes current-user progress and bookmark reads plus non-destructive
-  progress/bookmark mutations, but not recent sessions or listening statistics.
+- Current-user listening stats and listening-session read tools are now exposed
+  as read-only progress-adjacent tools.
 - [#4](https://github.com/jeeftor/abs-mcp/issues/4): Investigate safely gated
   backup and server-admin MCP tools. At least one public peer exposes backup
   creation, but any admin operation here should be source-verified,
@@ -123,7 +121,7 @@ docker run --rm -i \
   -e ABS_BASE_URL=http://host.docker.internal:13378 \
   -e ABS_API_KEY=... \
   -e ABS_READ_ONLY=true \
-  ghcr.io/jeeftor/abs-mcp:0.4.2
+  ghcr.io/jeeftor/abs-mcp:0.5.0
 ```
 
 For client-specific snippets, see [Client Configs](#client-configs).
@@ -153,6 +151,8 @@ Read-only tools:
 - `abs_list_collections`
 - `abs_get_collection`
 - `abs_get_items_in_progress`
+- `abs_get_listening_stats`
+- `abs_list_listening_sessions`
 - `abs_get_item_progress`
 - `abs_list_bookmarks`
 - `abs_list_backups`
@@ -177,31 +177,30 @@ Implemented mutating tools:
 - `abs_update_item_chapters`
 - `abs_create_collection`
 - `abs_update_collection`
+- `abs_delete_collection`
 - `abs_add_collection_item`
+- `abs_remove_collection_item`
 - `abs_create_playlist`
 - `abs_update_playlist`
+- `abs_delete_playlist`
 - `abs_add_playlist_item`
+- `abs_remove_playlist_item`
 - `abs_remove_library_items_with_issues`
 
 Planned mutating tools advertised for discovery:
 
 - `abs_match_item`
 - `abs_update_item_tracks`
-- `abs_delete_collection`
-- `abs_remove_collection_item`
-- `abs_delete_playlist`
-- `abs_remove_playlist_item`
 
 Mutating tools are blocked by default because `ABS_READ_ONLY` defaults to
 `true`. Scan tools, issue cleanup, `abs_update_item_cover`,
 `abs_remove_item_cover`, `abs_update_item_chapters`, typed item metadata,
 current-user progress/bookmark writes, ebook send-to-device email delivery,
 guarded query-based ebook delivery, and non-destructive collection/playlist
-create, update, and add-item tools are implemented. Remaining planned mutating
-tools, including item matching,
-delete/remove collection and playlist operations, and item track updates, are
-advertised for discovery but return a not-implemented error after read-only and
-confirmation checks until their ABS source and fixture behavior is verified.
+create, update, add-item, delete, and remove-item tools are implemented.
+Remaining planned mutating tools, including item matching and item track
+updates, are advertised for discovery but return a not-implemented error after
+read-only checks until their ABS source and fixture behavior is verified.
 
 ### Resources
 
@@ -345,18 +344,17 @@ These tools can mutate Audiobookshelf state and require `ABS_READ_ONLY=false`:
 - `abs_update_item_tracks` (planned; not implemented)
 - `abs_create_collection`
 - `abs_update_collection`
-- `abs_delete_collection` (planned; not implemented)
+- `abs_delete_collection`
 - `abs_add_collection_item`
-- `abs_remove_collection_item` (planned; not implemented)
+- `abs_remove_collection_item`
 - `abs_create_playlist`
 - `abs_update_playlist`
-- `abs_delete_playlist` (planned; not implemented)
+- `abs_delete_playlist`
 - `abs_add_playlist_item`
-- `abs_remove_playlist_item` (planned; not implemented)
+- `abs_remove_playlist_item`
 - `abs_remove_library_items_with_issues`
 
-The item match, item track, and destructive collection/playlist delete/remove
-tools are stubs: they validate read-only mode and destructive confirmations,
+The item match and item track tools are stubs: they validate read-only mode,
 then return a clear not-implemented error until their Audiobookshelf source and
 Docker fixture behavior are verified.
 
@@ -504,7 +502,7 @@ Docker-based stdio config:
         "ABS_API_KEY",
         "-e",
         "ABS_READ_ONLY=true",
-        "ghcr.io/jeeftor/abs-mcp:0.4.2"
+        "ghcr.io/jeeftor/abs-mcp:0.5.0"
       ],
       "env": {
         "ABS_API_KEY": "..."
@@ -521,7 +519,7 @@ docker run --rm -i \
   -e ABS_BASE_URL=http://host.docker.internal:13388 \
   -e ABS_API_KEY=... \
   -e ABS_READ_ONLY=true \
-  ghcr.io/jeeftor/abs-mcp:0.4.2
+  ghcr.io/jeeftor/abs-mcp:0.5.0
 ```
 
 With Cloudflare Access headers and a corporate/private CA bundle:
@@ -534,7 +532,7 @@ docker run --rm -i \
   -e ABS_TLS_CA_CERT_FILE=/run/secrets/corporate-ca.pem \
   -v /path/to/headers.json:/run/secrets/abs-headers.json:ro \
   -v /path/to/corporate-ca.pem:/run/secrets/corporate-ca.pem:ro \
-  ghcr.io/jeeftor/abs-mcp:0.4.2
+  ghcr.io/jeeftor/abs-mcp:0.5.0
 ```
 
 Build a local image:

@@ -524,6 +524,69 @@ func TestGetItemsInProgress(t *testing.T) {
 	}
 }
 
+func TestGetListeningStats(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.GetListeningStats(context.Background(), nil, EmptyInput{})
+	if err != nil {
+		t.Fatalf("GetListeningStats failed: %v", err)
+	}
+	if output.User.Scope != "currentUser" {
+		t.Fatalf("User.Scope = %q, want currentUser", output.User.Scope)
+	}
+	if !client.getListeningStatsCalled {
+		t.Fatal("expected GetListeningStats client call")
+	}
+	if output.Data == nil {
+		t.Fatal("expected listening stats data")
+	}
+}
+
+func TestListListeningSessions(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.ListListeningSessions(context.Background(), nil, ListeningSessionsInput{
+		Limit: 1000,
+		Page:  2,
+	})
+	if err != nil {
+		t.Fatalf("ListListeningSessions failed: %v", err)
+	}
+	if output.User.Scope != "currentUser" {
+		t.Fatalf("User.Scope = %q, want currentUser", output.User.Scope)
+	}
+	if output.Limit != 100 || output.Page != 2 {
+		t.Fatalf("unexpected pagination: %#v", output)
+	}
+	if client.listListeningSessionsLimit != 100 || client.listListeningSessionsPage != 2 {
+		t.Fatalf("unexpected client pagination: %d/%d", client.listListeningSessionsLimit, client.listListeningSessionsPage)
+	}
+	if output.Data == nil {
+		t.Fatal("expected listening sessions data")
+	}
+}
+
+func TestListListeningSessionsDefaults(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+	_, output, err := server.ListListeningSessions(context.Background(), nil, ListeningSessionsInput{})
+	if err != nil {
+		t.Fatalf("ListListeningSessions failed: %v", err)
+	}
+	if output.Limit != 25 || output.Page != 0 {
+		t.Fatalf("Limit/Page = %d/%d, want 25/0", output.Limit, output.Page)
+	}
+	if client.listListeningSessionsLimit != 25 || client.listListeningSessionsPage != 0 {
+		t.Fatalf("client Limit/Page = %d/%d, want 25/0", client.listListeningSessionsLimit, client.listListeningSessionsPage)
+	}
+}
+
 func TestGetItemProgress(t *testing.T) {
 	t.Parallel()
 
@@ -1277,6 +1340,35 @@ func TestCollectionMutations(t *testing.T) {
 	if client.addCollectionID != "col-1" || client.addCollectionItemID != "item-1" {
 		t.Fatalf("unexpected add collection call: %q/%q", client.addCollectionID, client.addCollectionItemID)
 	}
+
+	_, deleted, err := server.DeleteCollection(context.Background(), nil, ConfirmedCollectionInput{
+		CollectionID: "col-1",
+		Confirmation: "delete collection col-1",
+	})
+	if err != nil {
+		t.Fatalf("DeleteCollection failed: %v", err)
+	}
+	if !deleted.Triggered || deleted.ID != "col-1" {
+		t.Fatalf("unexpected delete collection output: %#v", deleted)
+	}
+	if client.deleteCollectionID != "col-1" {
+		t.Fatalf("unexpected delete collection call: %q", client.deleteCollectionID)
+	}
+
+	_, removed, err := server.RemoveCollectionItem(context.Background(), nil, CollectionItemInput{
+		CollectionID: "col-1",
+		ItemID:       "item-1",
+		Confirmation: "remove item item-1 from collection col-1",
+	})
+	if err != nil {
+		t.Fatalf("RemoveCollectionItem failed: %v", err)
+	}
+	if !removed.Triggered || removed.ID != "col-1" {
+		t.Fatalf("unexpected remove collection item output: %#v", removed)
+	}
+	if client.removeCollectionID != "col-1" || client.removeCollectionItemID != "item-1" {
+		t.Fatalf("unexpected remove collection call: %q/%q", client.removeCollectionID, client.removeCollectionItemID)
+	}
 }
 
 func TestPlaylistMutations(t *testing.T) {
@@ -1329,6 +1421,36 @@ func TestPlaylistMutations(t *testing.T) {
 	}
 	if client.addPlaylistID != "pl-1" || client.addPlaylistItem.LibraryItemID != "item-1" || client.addPlaylistItem.EpisodeID != "episode-1" {
 		t.Fatalf("unexpected add playlist call: %q %#v", client.addPlaylistID, client.addPlaylistItem)
+	}
+
+	_, deleted, err := server.DeletePlaylist(context.Background(), nil, ConfirmedPlaylistInput{
+		PlaylistID:   "pl-1",
+		Confirmation: "delete playlist pl-1",
+	})
+	if err != nil {
+		t.Fatalf("DeletePlaylist failed: %v", err)
+	}
+	if !deleted.Triggered || deleted.ID != "pl-1" {
+		t.Fatalf("unexpected delete playlist output: %#v", deleted)
+	}
+	if client.deletePlaylistID != "pl-1" {
+		t.Fatalf("unexpected delete playlist call: %q", client.deletePlaylistID)
+	}
+
+	_, removed, err := server.RemovePlaylistItem(context.Background(), nil, PlaylistItemInput{
+		PlaylistID:   "pl-1",
+		ItemID:       "item-1",
+		EpisodeID:    "episode-1",
+		Confirmation: "remove item item-1 from playlist pl-1",
+	})
+	if err != nil {
+		t.Fatalf("RemovePlaylistItem failed: %v", err)
+	}
+	if !removed.Triggered || removed.ID != "pl-1" {
+		t.Fatalf("unexpected remove playlist item output: %#v", removed)
+	}
+	if client.removePlaylistID != "pl-1" || client.removePlaylistItem.LibraryItemID != "item-1" || client.removePlaylistItem.EpisodeID != "episode-1" {
+		t.Fatalf("unexpected remove playlist call: %q %#v", client.removePlaylistID, client.removePlaylistItem)
 	}
 }
 
@@ -1522,10 +1644,6 @@ func TestPlannedMutatingToolsAreNotImplementedWithReadOnlyDisabled(t *testing.T)
 			_, _, err := server.MatchItem(context.Background(), nil, MatchItemInput{ItemID: "item-1"})
 			return err
 		},
-		"abs_delete_playlist": func() error {
-			_, _, err := server.DeletePlaylist(context.Background(), nil, ConfirmedPlaylistInput{PlaylistID: "pl-1", Confirmation: "delete playlist pl-1"})
-			return err
-		},
 	}
 
 	for toolName, call := range tests {
@@ -1685,6 +1803,9 @@ type fakeABSClient struct {
 	lastCatalogListOptions      abs.CatalogListOptions
 	lastInclude                 []string
 	itemsInProgressLimit        int
+	getListeningStatsCalled     bool
+	listListeningSessionsLimit  int
+	listListeningSessionsPage   int
 	updateItemProgressID        string
 	updateItemProgressEpisodeID string
 	updateItemProgressPayload   abs.ProgressUpdatePayload
@@ -1709,11 +1830,17 @@ type fakeABSClient struct {
 	updateCollectionPayload     abs.CollectionPayload
 	addCollectionID             string
 	addCollectionItemID         string
+	deleteCollectionID          string
+	removeCollectionID          string
+	removeCollectionItemID      string
 	createPlaylistPayload       abs.PlaylistPayload
 	updatePlaylistID            string
 	updatePlaylistPayload       abs.PlaylistPayload
 	addPlaylistID               string
 	addPlaylistItem             abs.PlaylistItemPayload
+	deletePlaylistID            string
+	removePlaylistID            string
+	removePlaylistItem          abs.PlaylistItemPayload
 	removeIssuesCalled          bool
 	removeIssuesLibraryID       string
 	err                         error
@@ -2050,6 +2177,27 @@ func (f *fakeABSClient) GetItemsInProgress(_ context.Context, limit int) (abs.JS
 	}, nil
 }
 
+func (f *fakeABSClient) GetListeningStats(context.Context) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.getListeningStatsCalled = true
+	return map[string]any{"totalTime": 123}, nil
+}
+
+func (f *fakeABSClient) ListListeningSessions(_ context.Context, limit int, page int) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.listListeningSessionsLimit = limit
+	f.listListeningSessionsPage = page
+	return map[string]any{
+		"sessions": []any{
+			map[string]any{"id": "session-1"},
+		},
+	}, nil
+}
+
 func (f *fakeABSClient) GetItemProgress(_ context.Context, itemID string, episodeID string) (*abs.MediaProgress, error) {
 	if f.err != nil {
 		return nil, f.err
@@ -2187,6 +2335,23 @@ func (f *fakeABSClient) AddCollectionItem(_ context.Context, collectionID string
 	return map[string]any{"id": collectionID, "addedItemId": itemID}, nil
 }
 
+func (f *fakeABSClient) DeleteCollection(_ context.Context, collectionID string) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.deleteCollectionID = collectionID
+	return map[string]any{"id": collectionID, "deleted": true}, nil
+}
+
+func (f *fakeABSClient) RemoveCollectionItem(_ context.Context, collectionID string, itemID string) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.removeCollectionID = collectionID
+	f.removeCollectionItemID = itemID
+	return map[string]any{"id": collectionID, "removedItemId": itemID}, nil
+}
+
 func (f *fakeABSClient) CreatePlaylist(_ context.Context, payload abs.PlaylistPayload) (abs.JSONValue, error) {
 	if f.err != nil {
 		return nil, f.err
@@ -2211,6 +2376,23 @@ func (f *fakeABSClient) AddPlaylistItem(_ context.Context, playlistID string, pa
 	f.addPlaylistID = playlistID
 	f.addPlaylistItem = payload
 	return map[string]any{"id": playlistID, "addedItemId": payload.LibraryItemID}, nil
+}
+
+func (f *fakeABSClient) DeletePlaylist(_ context.Context, playlistID string) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.deletePlaylistID = playlistID
+	return map[string]any{"id": playlistID, "deleted": true}, nil
+}
+
+func (f *fakeABSClient) RemovePlaylistItem(_ context.Context, playlistID string, payload abs.PlaylistItemPayload) (abs.JSONValue, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.removePlaylistID = playlistID
+	f.removePlaylistItem = payload
+	return map[string]any{"id": playlistID, "removedItemId": payload.LibraryItemID}, nil
 }
 
 func (f *fakeABSClient) RemoveLibraryItemsWithIssues(_ context.Context, libraryID string) error {

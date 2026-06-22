@@ -35,6 +35,8 @@ type ABSClient interface {
 	ListCollections(context.Context) (abs.JSONValue, error)
 	GetCollection(context.Context, string, []string) (abs.JSONValue, error)
 	GetItemsInProgress(context.Context, int) (abs.JSONValue, error)
+	GetListeningStats(context.Context) (abs.JSONValue, error)
+	ListListeningSessions(context.Context, int, int) (abs.JSONValue, error)
 	GetItemProgress(context.Context, string, string) (*abs.MediaProgress, error)
 	ListBookmarks(context.Context) ([]abs.Bookmark, error)
 	UpdateItemProgress(context.Context, string, string, abs.ProgressUpdatePayload) error
@@ -55,9 +57,13 @@ type ABSClient interface {
 	CreateCollection(context.Context, abs.CollectionPayload) (abs.JSONValue, error)
 	UpdateCollection(context.Context, string, abs.CollectionPayload) (abs.JSONValue, error)
 	AddCollectionItem(context.Context, string, string) (abs.JSONValue, error)
+	DeleteCollection(context.Context, string) (abs.JSONValue, error)
+	RemoveCollectionItem(context.Context, string, string) (abs.JSONValue, error)
 	CreatePlaylist(context.Context, abs.PlaylistPayload) (abs.JSONValue, error)
 	UpdatePlaylist(context.Context, string, abs.PlaylistPayload) (abs.JSONValue, error)
 	AddPlaylistItem(context.Context, string, abs.PlaylistItemPayload) (abs.JSONValue, error)
+	DeletePlaylist(context.Context, string) (abs.JSONValue, error)
+	RemovePlaylistItem(context.Context, string, abs.PlaylistItemPayload) (abs.JSONValue, error)
 }
 
 // Server owns MCP tool handlers and their dependencies.
@@ -165,6 +171,16 @@ func (s *Server) MCPServer() *mcp.Server {
 		Title:       "Get Audiobookshelf current-user items in progress",
 		Description: "Get source-backed items in progress for the configured Audiobookshelf user.",
 	}, s.GetItemsInProgress)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_get_listening_stats",
+		Title:       "Get Audiobookshelf current-user listening stats",
+		Description: "Get source-backed listening statistics for the configured Audiobookshelf user.",
+	}, s.GetListeningStats)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "abs_list_listening_sessions",
+		Title:       "List Audiobookshelf current-user listening sessions",
+		Description: "List a bounded page of listening sessions for the configured Audiobookshelf user.",
+	}, s.ListListeningSessions)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_get_item_progress",
 		Title:       "Get Audiobookshelf current-user item progress",
@@ -283,7 +299,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_delete_collection",
 		Title:       "Delete Audiobookshelf collection",
-		Description: "Planned destructive tool for deleting a collection. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+		Description: "Delete one collection after exact confirmation. Blocked when ABS_READ_ONLY is true.",
 	}, s.DeleteCollection)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_add_collection_item",
@@ -293,7 +309,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_remove_collection_item",
 		Title:       "Remove Audiobookshelf collection item",
-		Description: "Planned destructive tool for removing an item from a collection. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+		Description: "Remove one library item from a collection after exact confirmation. Blocked when ABS_READ_ONLY is true.",
 	}, s.RemoveCollectionItem)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_create_playlist",
@@ -308,7 +324,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_delete_playlist",
 		Title:       "Delete Audiobookshelf playlist",
-		Description: "Planned destructive tool for deleting a playlist. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+		Description: "Delete one playlist after exact confirmation. Blocked when ABS_READ_ONLY is true.",
 	}, s.DeletePlaylist)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_add_playlist_item",
@@ -318,7 +334,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_remove_playlist_item",
 		Title:       "Remove Audiobookshelf playlist item",
-		Description: "Planned destructive tool for removing an item from a playlist. Requires exact confirmation, is blocked when ABS_READ_ONLY is true, and is not implemented until source and fixture behavior are verified.",
+		Description: "Remove one library item or podcast episode from a playlist after exact confirmation. Blocked when ABS_READ_ONLY is true.",
 	}, s.RemovePlaylistItem)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_remove_library_items_with_issues",
@@ -510,6 +526,12 @@ type ItemsInProgressInput struct {
 	Limit int `json:"limit,omitempty" jsonschema:"Maximum number of items in progress to return. Defaults to 25 and is capped at 100."`
 }
 
+// ListeningSessionsInput selects one page of current-user listening sessions.
+type ListeningSessionsInput struct {
+	Limit int `json:"limit,omitempty" jsonschema:"Maximum number of listening sessions to return. Defaults to 25 and is capped at 100."`
+	Page  int `json:"page,omitempty" jsonschema:"Zero-based ABS listening sessions page. Defaults to 0."`
+}
+
 // UserProgressScope describes which Audiobookshelf user's progress is represented.
 type UserProgressScope struct {
 	Scope  string `json:"scope" jsonschema:"Progress scope. Current-user tools always return currentUser."`
@@ -521,6 +543,20 @@ type ItemsInProgressOutput struct {
 	Limit int               `json:"limit" jsonschema:"Normalized maximum number of current-user items requested."`
 	User  UserProgressScope `json:"user" jsonschema:"Audiobookshelf user scope for the returned progress data."`
 	Data  abs.JSONValue     `json:"data" jsonschema:"Raw Audiobookshelf current-user items-in-progress response."`
+}
+
+// ListeningStatsOutput is returned by abs_get_listening_stats.
+type ListeningStatsOutput struct {
+	User UserProgressScope `json:"user" jsonschema:"Audiobookshelf user scope for the returned listening statistics."`
+	Data abs.JSONValue     `json:"data" jsonschema:"Raw Audiobookshelf current-user listening stats response."`
+}
+
+// ListeningSessionsOutput is returned by abs_list_listening_sessions.
+type ListeningSessionsOutput struct {
+	Limit int               `json:"limit" jsonschema:"Normalized maximum number of current-user sessions requested."`
+	Page  int               `json:"page" jsonschema:"ABS page used for the request."`
+	User  UserProgressScope `json:"user" jsonschema:"Audiobookshelf user scope for the returned listening sessions."`
+	Data  abs.JSONValue     `json:"data" jsonschema:"Raw Audiobookshelf current-user listening sessions response."`
 }
 
 // ItemProgressInput identifies current-user progress for one item or episode.
@@ -834,13 +870,13 @@ type CollectionInput struct {
 	ItemIDs      []string `json:"itemIds,omitempty" jsonschema:"Audiobookshelf library item IDs for collection creation."`
 }
 
-// ConfirmedCollectionInput identifies one planned destructive collection request.
+// ConfirmedCollectionInput identifies one destructive collection request.
 type ConfirmedCollectionInput struct {
 	CollectionID string `json:"collectionId" jsonschema:"Audiobookshelf collection ID to mutate."`
 	Confirmation string `json:"confirmation" jsonschema:"Exact confirmation text required by the tool."`
 }
 
-// CollectionItemInput identifies one planned collection item membership request.
+// CollectionItemInput identifies one collection item membership request.
 type CollectionItemInput struct {
 	CollectionID string `json:"collectionId" jsonschema:"Audiobookshelf collection ID to mutate."`
 	ItemID       string `json:"itemId" jsonschema:"Audiobookshelf library item ID to add or remove."`
@@ -862,7 +898,7 @@ type ConfirmedPlaylistInput struct {
 	Confirmation string `json:"confirmation" jsonschema:"Exact confirmation text required by the tool."`
 }
 
-// PlaylistItemInput identifies one planned playlist item membership request.
+// PlaylistItemInput identifies one playlist item membership request.
 type PlaylistItemInput struct {
 	PlaylistID   string `json:"playlistId" jsonschema:"Audiobookshelf playlist ID to mutate."`
 	ItemID       string `json:"itemId" jsonschema:"Audiobookshelf library item ID to add or remove."`
@@ -1259,6 +1295,44 @@ func (s *Server) GetItemsInProgress(
 		return nil, ItemsInProgressOutput{}, fmt.Errorf("get ABS current-user items in progress: %w", err)
 	}
 	return nil, ItemsInProgressOutput{Limit: limit, User: currentUserProgressScope(""), Data: data}, nil
+}
+
+// GetListeningStats returns current-user listening statistics.
+func (s *Server) GetListeningStats(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	_ EmptyInput,
+) (*mcp.CallToolResult, ListeningStatsOutput, error) {
+	data, err := s.client.GetListeningStats(ctx)
+	if err != nil {
+		return nil, ListeningStatsOutput{}, fmt.Errorf("get ABS current-user listening stats: %w", err)
+	}
+	return nil, ListeningStatsOutput{User: currentUserProgressScope(""), Data: data}, nil
+}
+
+// ListListeningSessions returns current-user listening sessions.
+func (s *Server) ListListeningSessions(
+	ctx context.Context,
+	_ *mcp.CallToolRequest,
+	input ListeningSessionsInput,
+) (*mcp.CallToolResult, ListeningSessionsOutput, error) {
+	limit, err := normalizeLimit(input.Limit)
+	if err != nil {
+		return nil, ListeningSessionsOutput{}, err
+	}
+	if input.Page < 0 {
+		return nil, ListeningSessionsOutput{}, fmt.Errorf("page must be greater than or equal to 0")
+	}
+	data, err := s.client.ListListeningSessions(ctx, limit, input.Page)
+	if err != nil {
+		return nil, ListeningSessionsOutput{}, fmt.Errorf("list ABS current-user listening sessions: %w", err)
+	}
+	return nil, ListeningSessionsOutput{
+		Limit: limit,
+		Page:  input.Page,
+		User:  currentUserProgressScope(""),
+		Data:  data,
+	}, nil
 }
 
 // GetItemProgress returns current-user progress for one item or episode.
@@ -1964,23 +2038,32 @@ func (s *Server) UpdateCollection(
 	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
-// DeleteCollection is a planned destructive collection mutation tool gated by read-only mode.
+// DeleteCollection deletes one collection after exact confirmation.
 func (s *Server) DeleteCollection(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input ConfirmedCollectionInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_delete_collection"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.CollectionID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("collectionId is required")
+	collectionID := strings.TrimSpace(input.CollectionID)
+	if collectionID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("collectionId is required")
 	}
-	expectedConfirmation := fmt.Sprintf("delete collection %s", input.CollectionID)
+	expectedConfirmation := fmt.Sprintf("delete collection %s", collectionID)
 	if input.Confirmation != expectedConfirmation {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+		return nil, CatalogMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_delete_collection", "DELETE /api/collections/:id")
+	data, err := s.client.DeleteCollection(ctx, collectionID)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("delete ABS collection %q: %w", collectionID, err)
+	}
+	id := jsonValueID(data)
+	if id == "" {
+		id = collectionID
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
 // AddCollectionItem adds one item to a collection.
@@ -2011,26 +2094,36 @@ func (s *Server) AddCollectionItem(
 	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
-// RemoveCollectionItem is a planned destructive collection membership tool gated by read-only mode.
+// RemoveCollectionItem removes one item from a collection after exact confirmation.
 func (s *Server) RemoveCollectionItem(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input CollectionItemInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_remove_collection_item"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.CollectionID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("collectionId is required")
+	collectionID := strings.TrimSpace(input.CollectionID)
+	itemID := strings.TrimSpace(input.ItemID)
+	if collectionID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("collectionId is required")
 	}
-	if input.ItemID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	if itemID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("itemId is required")
 	}
-	expectedConfirmation := fmt.Sprintf("remove item %s from collection %s", input.ItemID, input.CollectionID)
+	expectedConfirmation := fmt.Sprintf("remove item %s from collection %s", itemID, collectionID)
 	if input.Confirmation != expectedConfirmation {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+		return nil, CatalogMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_remove_collection_item", "DELETE /api/collections/:id/book/:bookId")
+	data, err := s.client.RemoveCollectionItem(ctx, collectionID, itemID)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("remove ABS collection %q item %q: %w", collectionID, itemID, err)
+	}
+	id := jsonValueID(data)
+	if id == "" {
+		id = collectionID
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
 // CreatePlaylist creates one playlist.
@@ -2098,23 +2191,32 @@ func (s *Server) UpdatePlaylist(
 	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
-// DeletePlaylist is a planned destructive playlist mutation tool gated by read-only mode.
+// DeletePlaylist deletes one playlist after exact confirmation.
 func (s *Server) DeletePlaylist(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input ConfirmedPlaylistInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_delete_playlist"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.PlaylistID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("playlistId is required")
+	playlistID := strings.TrimSpace(input.PlaylistID)
+	if playlistID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("playlistId is required")
 	}
-	expectedConfirmation := fmt.Sprintf("delete playlist %s", input.PlaylistID)
+	expectedConfirmation := fmt.Sprintf("delete playlist %s", playlistID)
 	if input.Confirmation != expectedConfirmation {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+		return nil, CatalogMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_delete_playlist", "DELETE /api/playlists/:id")
+	data, err := s.client.DeletePlaylist(ctx, playlistID)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("delete ABS playlist %q: %w", playlistID, err)
+	}
+	id := jsonValueID(data)
+	if id == "" {
+		id = playlistID
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
 // AddPlaylistItem adds one item or episode to a playlist.
@@ -2149,26 +2251,40 @@ func (s *Server) AddPlaylistItem(
 	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
-// RemovePlaylistItem is a planned destructive playlist membership tool gated by read-only mode.
+// RemovePlaylistItem removes one item or episode from a playlist after exact confirmation.
 func (s *Server) RemovePlaylistItem(
-	_ context.Context,
+	ctx context.Context,
 	_ *mcp.CallToolRequest,
 	input PlaylistItemInput,
-) (*mcp.CallToolResult, PlannedMutationOutput, error) {
+) (*mcp.CallToolResult, CatalogMutationOutput, error) {
 	if err := s.requireMutatingTool("abs_remove_playlist_item"); err != nil {
-		return nil, PlannedMutationOutput{}, err
+		return nil, CatalogMutationOutput{}, err
 	}
-	if input.PlaylistID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("playlistId is required")
+	playlistID := strings.TrimSpace(input.PlaylistID)
+	itemID := strings.TrimSpace(input.ItemID)
+	if playlistID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("playlistId is required")
 	}
-	if input.ItemID == "" {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("itemId is required")
+	if itemID == "" {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("itemId is required")
 	}
-	expectedConfirmation := fmt.Sprintf("remove item %s from playlist %s", input.ItemID, input.PlaylistID)
+	expectedConfirmation := fmt.Sprintf("remove item %s from playlist %s", itemID, playlistID)
 	if input.Confirmation != expectedConfirmation {
-		return nil, PlannedMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
+		return nil, CatalogMutationOutput{}, fmt.Errorf("confirmation must exactly equal %q", expectedConfirmation)
 	}
-	return nil, PlannedMutationOutput{}, plannedToolError("abs_remove_playlist_item", "DELETE /api/playlists/:id/item/:libraryItemId/:episodeId?")
+	payload := abs.PlaylistItemPayload{
+		LibraryItemID: itemID,
+		EpisodeID:     strings.TrimSpace(input.EpisodeID),
+	}
+	data, err := s.client.RemovePlaylistItem(ctx, playlistID, payload)
+	if err != nil {
+		return nil, CatalogMutationOutput{}, fmt.Errorf("remove ABS playlist %q item %q: %w", playlistID, itemID, err)
+	}
+	id := jsonValueID(data)
+	if id == "" {
+		id = playlistID
+	}
+	return nil, CatalogMutationOutput{Triggered: true, ID: id, Data: data}, nil
 }
 
 func (s *Server) requireMutatingTool(toolName string) error {
