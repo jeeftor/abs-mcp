@@ -92,11 +92,11 @@ Candidate gaps from this comparison:
   matching routes. Implementing it should require preview-before-apply behavior,
   a selected provider/result, and exact confirmation because metadata matching
   can overwrite useful catalog state.
-- Candidate: user/share workflows. The current MCP server can send ebooks to
-  saved ereader devices, but it does not create ABS media shares or send books
-  to another ABS user. The source inventory includes share and user routes, so a
-  useful first slice would be read-only share/user discovery followed by a
-  guarded, interactive share creation workflow.
+- Candidate: share-link and account-management workflows. The current MCP
+  server already sends ebooks to saved ereader devices; it does not create ABS
+  media shares or expose account-management tools. The source inventory includes
+  share and user routes, so a useful first slice would be read-only share/user
+  discovery followed by a guarded, interactive share-link creation workflow.
 - Candidate: account-management reads. Public peers expose user information in
   different ways, and Audiobookshelf has user and online-user routes. This
   project should add read-only admin/user inventory before considering user
