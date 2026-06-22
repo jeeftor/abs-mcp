@@ -139,6 +139,12 @@ func TestABSFixtureLibrariesAndItems(t *testing.T) {
 			if err != nil {
 				t.Fatalf("get %s current-user items in progress: %v", name, err)
 			}
+			if _, err := client.GetListeningStats(ctx); err != nil {
+				t.Fatalf("get %s current-user listening stats: %v", name, err)
+			}
+			if _, err := client.ListListeningSessions(ctx, 10, 0); err != nil {
+				t.Fatalf("get %s current-user listening sessions: %v", name, err)
+			}
 			if itemID := firstIDFromPayload(t, itemsInProgress, "libraryItems"); itemID != "" {
 				if _, err := client.GetItemProgress(ctx, itemID, ""); err != nil {
 					t.Fatalf("get %s current-user item progress %q: %v", name, itemID, err)
@@ -342,6 +348,9 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 	if len(ebookItem.Item.Files) == 0 {
 		t.Fatalf("expected ebook item to include file summaries: %#v", ebookItem.Item)
 	}
+	if len(items.Items) < 2 {
+		t.Fatalf("expected at least two audiobook items for catalog lifecycle fixture coverage, got %d", len(items.Items))
+	}
 
 	searchResult, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "abs_search_library",
@@ -394,6 +403,39 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 	unmarshalStructuredOutput(t, itemsInProgressResult.StructuredContent, &itemsInProgress)
 	if itemsInProgress.Data == nil {
 		t.Fatal("expected current-user items-in-progress data")
+	}
+	listeningStatsResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "abs_get_listening_stats",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("call abs_get_listening_stats: %v", err)
+	}
+	if listeningStatsResult.IsError {
+		t.Fatalf("abs_get_listening_stats returned tool error: %#v", listeningStatsResult.Content)
+	}
+	var listeningStats mcpserver.ListeningStatsOutput
+	unmarshalStructuredOutput(t, listeningStatsResult.StructuredContent, &listeningStats)
+	if listeningStats.Data == nil || listeningStats.User.Scope != "currentUser" {
+		t.Fatalf("unexpected listening stats output: %#v", listeningStats)
+	}
+	listeningSessionsResult, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_list_listening_sessions",
+		Arguments: map[string]any{
+			"limit": 10,
+			"page":  0,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call abs_list_listening_sessions: %v", err)
+	}
+	if listeningSessionsResult.IsError {
+		t.Fatalf("abs_list_listening_sessions returned tool error: %#v", listeningSessionsResult.Content)
+	}
+	var listeningSessions mcpserver.ListeningSessionsOutput
+	unmarshalStructuredOutput(t, listeningSessionsResult.StructuredContent, &listeningSessions)
+	if listeningSessions.Data == nil || listeningSessions.User.Scope != "currentUser" || listeningSessions.Limit != 10 {
+		t.Fatalf("unexpected listening sessions output: %#v", listeningSessions)
 	}
 	if itemID := firstIDFromPayload(t, itemsInProgress.Data, "libraryItems"); itemID != "" {
 		itemProgressResult, err := session.CallTool(ctx, &mcp.CallToolParams{
@@ -955,6 +997,45 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		if !addCollection.Triggered || addCollection.ID != createdCollection.ID {
 			t.Fatalf("unexpected add collection output: %#v", addCollection)
 		}
+
+		removeCollectionResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
+			Name: "abs_remove_collection_item",
+			Arguments: map[string]any{
+				"collectionId": createdCollection.ID,
+				"itemId":       items.Items[1].ID,
+				"confirmation": "remove item " + items.Items[1].ID + " from collection " + createdCollection.ID,
+			},
+		})
+		if err != nil {
+			t.Fatalf("call mutating abs_remove_collection_item: %v", err)
+		}
+		if removeCollectionResult.IsError {
+			t.Fatalf("abs_remove_collection_item returned tool error: %#v", removeCollectionResult.Content)
+		}
+		var removedCollectionItem mcpserver.CatalogMutationOutput
+		unmarshalStructuredOutput(t, removeCollectionResult.StructuredContent, &removedCollectionItem)
+		if !removedCollectionItem.Triggered || removedCollectionItem.ID != createdCollection.ID {
+			t.Fatalf("unexpected remove collection item output: %#v", removedCollectionItem)
+		}
+	}
+
+	deleteCollectionResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_delete_collection",
+		Arguments: map[string]any{
+			"collectionId": createdCollection.ID,
+			"confirmation": "delete collection " + createdCollection.ID,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call mutating abs_delete_collection: %v", err)
+	}
+	if deleteCollectionResult.IsError {
+		t.Fatalf("abs_delete_collection returned tool error: %#v", deleteCollectionResult.Content)
+	}
+	var deletedCollection mcpserver.CatalogMutationOutput
+	unmarshalStructuredOutput(t, deleteCollectionResult.StructuredContent, &deletedCollection)
+	if !deletedCollection.Triggered || deletedCollection.ID != createdCollection.ID {
+		t.Fatalf("unexpected delete collection output: %#v", deletedCollection)
 	}
 
 	playlistName := "abs-mcp-fixture-playlist-" + catalogSuffix
@@ -1017,6 +1098,45 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		if !addPlaylist.Triggered || addPlaylist.ID != createdPlaylist.ID {
 			t.Fatalf("unexpected add playlist output: %#v", addPlaylist)
 		}
+
+		removePlaylistResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
+			Name: "abs_remove_playlist_item",
+			Arguments: map[string]any{
+				"playlistId":   createdPlaylist.ID,
+				"itemId":       items.Items[1].ID,
+				"confirmation": "remove item " + items.Items[1].ID + " from playlist " + createdPlaylist.ID,
+			},
+		})
+		if err != nil {
+			t.Fatalf("call mutating abs_remove_playlist_item: %v", err)
+		}
+		if removePlaylistResult.IsError {
+			t.Fatalf("abs_remove_playlist_item returned tool error: %#v", removePlaylistResult.Content)
+		}
+		var removedPlaylistItem mcpserver.CatalogMutationOutput
+		unmarshalStructuredOutput(t, removePlaylistResult.StructuredContent, &removedPlaylistItem)
+		if !removedPlaylistItem.Triggered || removedPlaylistItem.ID != createdPlaylist.ID {
+			t.Fatalf("unexpected remove playlist item output: %#v", removedPlaylistItem)
+		}
+	}
+
+	deletePlaylistResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "abs_delete_playlist",
+		Arguments: map[string]any{
+			"playlistId":   createdPlaylist.ID,
+			"confirmation": "delete playlist " + createdPlaylist.ID,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call mutating abs_delete_playlist: %v", err)
+	}
+	if deletePlaylistResult.IsError {
+		t.Fatalf("abs_delete_playlist returned tool error: %#v", deletePlaylistResult.Content)
+	}
+	var deletedPlaylist mcpserver.CatalogMutationOutput
+	unmarshalStructuredOutput(t, deletePlaylistResult.StructuredContent, &deletedPlaylist)
+	if !deletedPlaylist.Triggered || deletedPlaylist.ID != createdPlaylist.ID {
+		t.Fatalf("unexpected delete playlist output: %#v", deletedPlaylist)
 	}
 
 	scanWaitResult, err := mutatingSession.CallTool(ctx, &mcp.CallToolParams{
