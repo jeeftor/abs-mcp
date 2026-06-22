@@ -48,6 +48,7 @@ Build a high-quality Model Context Protocol server for Audiobookshelf. The serve
 - Do not add `packages[].version` when `packages[].registryType` is `oci`; the MCP Registry rejects that shape even if local JSON checks pass.
 - Run `python3 scripts/validate_server_json.py` or `prek run validate-server-json --all-files` before release metadata changes.
 - Tag releases as `vX.Y.Z`; tag pushes trigger the release workflow, GHCR image publish, MCP Registry publish, and GitHub release creation.
+- When publishing or editing GitHub release notes, include a container image section that links to the versioned GHCR package tag and shows the `docker pull ghcr.io/jeeftor/abs-mcp:<version>` command.
 
 ## Audiobookshelf API Update Workflow
 
