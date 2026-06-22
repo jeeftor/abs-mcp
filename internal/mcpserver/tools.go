@@ -2786,7 +2786,7 @@ func itemHasEbook(item abs.LibraryItem) bool {
 		return true
 	}
 	for _, file := range item.LibraryFiles {
-		if strings.EqualFold(file.FileType, "ebook") {
+		if isEbookLibraryFile(file) {
 			return true
 		}
 	}
@@ -2825,7 +2825,7 @@ func ebookSearchFields(item abs.LibraryItem) []string {
 		)
 	}
 	for _, file := range item.LibraryFiles {
-		if strings.EqualFold(file.FileType, "ebook") {
+		if isEbookLibraryFile(file) {
 			fields = append(fields, file.Metadata.Filename, file.Metadata.RelPath, file.Metadata.Path)
 		}
 	}
@@ -2836,6 +2836,19 @@ func ebookSearchFields(item abs.LibraryItem) []string {
 		fields = append(fields, series.Name)
 	}
 	return fields
+}
+
+func isEbookLibraryFile(file abs.LibraryFile) bool {
+	if strings.EqualFold(file.FileType, "ebook") {
+		return true
+	}
+	for _, value := range []string{file.Metadata.Filename, file.Metadata.RelPath, file.Metadata.Path} {
+		switch strings.ToLower(path.Ext(value)) {
+		case ".epub", ".mobi", ".azw3", ".pdf":
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeLayoutConvention(convention string) (string, error) {

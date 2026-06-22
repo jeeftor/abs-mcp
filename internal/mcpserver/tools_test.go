@@ -262,6 +262,41 @@ func TestSearchEbooks(t *testing.T) {
 	}
 }
 
+func TestSearchEbooksRecognizesEbookFileExtensions(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeABSClient()
+	client.items["lib-books"] = append(client.items["lib-books"], abs.LibraryItem{
+		ID:        "book-extension",
+		LibraryID: "lib-books",
+		Path:      "/books/fixture-only",
+		MediaType: "book",
+		Media:     abs.Media{Metadata: abs.Metadata{Title: "Fixture Only", AuthorName: "Test Author"}},
+		LibraryFiles: []abs.LibraryFile{
+			{
+				Metadata: abs.FileMetadata{
+					Filename: "fixture-only.epub",
+					Path:     "/books/fixture-only/fixture-only.epub",
+					RelPath:  "fixture-only/fixture-only.epub",
+				},
+			},
+		},
+	})
+	server := New(config.Config{ABSBaseURL: "http://abs", ReadOnly: true}, client)
+
+	_, output, err := server.SearchEbooks(context.Background(), nil, SearchEbooksInput{
+		LibraryID: "lib-books",
+		Query:     "fixture-only.epub",
+		Limit:     10,
+	})
+	if err != nil {
+		t.Fatalf("SearchEbooks failed: %v", err)
+	}
+	if output.MatchedCount != 1 || output.Items[0].ID != "book-extension" {
+		t.Fatalf("unexpected extension-backed ebook search output: %#v", output)
+	}
+}
+
 func TestSearchEbooksRejectsBadInput(t *testing.T) {
 	t.Parallel()
 
