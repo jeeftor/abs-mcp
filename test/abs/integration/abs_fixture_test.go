@@ -352,11 +352,12 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		t.Fatalf("expected at least two audiobook items for catalog lifecycle fixture coverage, got %d", len(items.Items))
 	}
 
+	ebookSearchQuery := ebookItems.Items[0].ID
 	ebookSearchResult, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "abs_search_ebooks",
 		Arguments: map[string]any{
 			"libraryId": ebookLibrary.ID,
-			"query":     "austen",
+			"query":     ebookSearchQuery,
 			"limit":     env.ExpectedEbooks,
 		},
 	})
@@ -376,7 +377,7 @@ func TestMCPServerAgainstABSFixture(t *testing.T) {
 		Name: "abs_preview_ebook_device_send",
 		Arguments: map[string]any{
 			"libraryId": ebookLibrary.ID,
-			"query":     "austen",
+			"query":     ebookSearchQuery,
 		},
 	})
 	if err != nil {
