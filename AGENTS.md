@@ -71,6 +71,7 @@ The repo-local fixture at `test/abs` provides:
 ## Verification
 
 - Prefer repo-native verification first.
+- Every new MCP feature must be backed by matrix coverage. Add or update the relevant unit, protocol, and Docker ABS fixture tests so CI proves the feature through the same matrix used for releases.
 - For docs-only changes, run a quick file review and `git status`.
 - For API client changes, add or update unit tests with `httptest`.
 - For MCP protocol behavior, add tests that spawn the MCP server over stdio and issue JSON-RPC/MCP requests directly.
