@@ -35,7 +35,6 @@ LABEL io.modelcontextprotocol.server.name="io.github.jeeftor/abs-mcp"
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /out/abs-mcp /abs-mcp
-COPY --from=build /src/docs/api-inventory/generated/abs-api-inventory.json /docs/api-inventory/generated/abs-api-inventory.json
 
 USER 65532:65532
 ENTRYPOINT ["/abs-mcp"]
