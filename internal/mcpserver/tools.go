@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path"
 	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/jeeftor/abs-mcp/docs/api-inventory/generated"
 	"github.com/jeeftor/abs-mcp/internal/abs"
 	"github.com/jeeftor/abs-mcp/internal/config"
 	"github.com/jeeftor/abs-mcp/internal/version"
@@ -354,15 +354,8 @@ func (s *Server) MCPServer() *mcp.Server {
 }
 
 func loadAPIInventory() any {
-	data, err := os.ReadFile("docs/api-inventory/generated/abs-api-inventory.json")
-	if err != nil {
-		return map[string]any{
-			"available": false,
-			"error":     err.Error(),
-		}
-	}
 	var inventory any
-	if err := json.Unmarshal(data, &inventory); err != nil {
+	if err := json.Unmarshal(generated.APIInventoryJSON, &inventory); err != nil {
 		return map[string]any{
 			"available": false,
 			"error":     err.Error(),
