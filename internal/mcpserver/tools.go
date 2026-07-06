@@ -229,12 +229,12 @@ func (s *Server) MCPServer() *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_send_ebook_to_device",
 		Title:       "Send Audiobookshelf ebook to device",
-		Description: "Send one Audiobookshelf ebook item to a saved ereader device by device name. This does not mutate Audiobookshelf library state.",
+		Description: "Send one Audiobookshelf ebook item to a saved ereader device by device name. Only emails an already-existing ebook file out; it does not mutate Audiobookshelf state, so it is allowed in read-only mode.",
 	}, s.SendEbookToDevice)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_send_ebook_by_query",
 		Title:       "Send Audiobookshelf ebook by query",
-		Description: "Resolve exactly one ebook search match, require an exact confirmation string, then send it to a saved ereader device. This does not mutate Audiobookshelf library state.",
+		Description: "Resolve exactly one ebook search match, require an exact confirmation string, then send it to a saved ereader device. Only emails an already-existing ebook file out; it does not mutate Audiobookshelf state, so it is allowed in read-only mode.",
 	}, s.SendEbookByQuery)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "abs_get_item_metadata_object",

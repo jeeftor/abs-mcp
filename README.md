@@ -223,9 +223,12 @@ Tools that mutate Audiobookshelf state are blocked by default because
 chapter updates, typed item metadata, current-user progress/bookmark writes,
 backup creation, and collection/playlist create, update, add-item, delete, and
 remove-item tools are implemented mutating operations. Ebook send-to-device
-delivery and guarded query-based device send perform outbound delivery but do
-not mutate Audiobookshelf library, metadata, backup, progress, collection, or
-playlist state, so they are allowed while read-only mode is enabled.
+delivery and guarded query-based device send only email an already-existing
+ebook file out; they create, change, or delete nothing on Audiobookshelf
+(library, metadata, backup, progress, collection, or playlist state), so they
+are allowed while read-only mode is enabled. Read-only here means "does not
+mutate Audiobookshelf state," not "produces no outbound side effect"; if you
+need to suppress device delivery entirely, do not configure an ereader device.
 Use `abs_preview_ebook_device_send` first for device-send UX: it is
 read-only, returns compact ebook candidates, sanitized device names, `ready`,
 the exact confirmation string when one ebook and one saved device name resolve,
