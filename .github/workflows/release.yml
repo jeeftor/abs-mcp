@@ -6,7 +6,9 @@ on:
       - "v*"
 
 permissions:
+  attestations: write
   contents: write
+  id-token: write
   packages: write
 
 env:
@@ -45,6 +47,7 @@ jobs:
           cache: true
 
       - name: Build archive
+        id: archive
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -65,9 +68,17 @@ jobs:
           cp docs/tools.md "dist/${package}/docs/"
           if [ "$GOOS" = "windows" ]; then
             (cd dist && zip -r "${package}.zip" "${package}")
+            archive_path="dist/${package}.zip"
           else
             tar -C dist -czf "dist/${package}.tar.gz" "${package}"
+            archive_path="dist/${package}.tar.gz"
           fi
+          echo "path=${archive_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Attest release archive
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ steps.archive.outputs.path }}
 
       - name: Upload archive artifact
         uses: actions/upload-artifact@v7
@@ -107,6 +118,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push image
+        id: image
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -116,6 +128,13 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ github.ref_name }}
+
+      - name: Attest container image
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
 
   mcp-registry:
     name: Publish MCP Registry Metadata
