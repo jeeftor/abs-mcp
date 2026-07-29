@@ -171,4 +171,12 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: dist/*
+          body: |
+            ## Container image
+
+            [ghcr.io/jeeftor/abs-mcp:${{ github.ref_name }}](https://github.com/jeeftor/abs-mcp/pkgs/container/abs-mcp)
+
+            ```sh
+            docker pull ghcr.io/jeeftor/abs-mcp:${{ github.ref_name }}
+            ```
           generate_release_notes: true
