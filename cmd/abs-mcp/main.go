@@ -138,7 +138,10 @@ func newStreamableHTTPHandler(cfg config.Config) (http.Handler, error) {
 	}
 	handler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
 		return server
-	}, nil)
+	}, &mcp.StreamableHTTPOptions{
+		Stateless:                    true,
+		PropagateRequestCancellation: true,
+	})
 	mux := http.NewServeMux()
 	mux.Handle(cfg.HTTPPath, streamableHTTPAuthMiddleware(cfg)(handler))
 	return mux, nil

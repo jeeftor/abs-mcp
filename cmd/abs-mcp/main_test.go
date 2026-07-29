@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -195,6 +196,126 @@ func TestStreamableHTTPHandlerServesMCP(t *testing.T) {
 	if !readOnlyResult.IsError {
 		t.Fatal("abs_scan_library succeeded over HTTP with ABS_READ_ONLY=true")
 	}
+}
+
+func TestStreamableHTTPHandlerUsesStatelessProtocol(t *testing.T) {
+	t.Parallel()
+
+	absServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/api/me":
+			writeJSON(t, writer, map[string]any{
+				"id":       "user-1",
+				"username": "root",
+				"type":     "root",
+				"isActive": true,
+			})
+		case "/api/libraries":
+			writeJSON(t, writer, map[string]any{"libraries": []map[string]any{}})
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer absServer.Close()
+
+	handler, err := newStreamableHTTPHandler(config.Config{
+		ABSBaseURL: absServer.URL,
+		ABSAPIKey:  "test-token",
+		Timeout:    30 * time.Second,
+		ReadOnly:   true,
+		FixtureDir: "test/abs",
+		Transport:  config.TransportHTTP,
+		HTTPPath:   "/mcp",
+	})
+	if err != nil {
+		t.Fatalf("newStreamableHTTPHandler failed: %v", err)
+	}
+
+	var requests []http.Header
+	var requestsMu sync.Mutex
+	httpServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requestsMu.Lock()
+		requests = append(requests, request.Header.Clone())
+		requestsMu.Unlock()
+		handler.ServeHTTP(writer, request)
+	}))
+	defer httpServer.Close()
+
+	response, err := http.Get(httpServer.URL + "/mcp")
+	if err != nil {
+		t.Fatalf("GET stateless endpoint: %v", err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusMethodNotAllowed || response.Header.Get("Allow") != http.MethodPost {
+		t.Fatalf("GET status/allow = %d/%q, want %d/%q", response.StatusCode, response.Header.Get("Allow"), http.StatusMethodNotAllowed, http.MethodPost)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	client := mcp.NewClient(&mcp.Implementation{Name: "abs-mcp-stateless-test", Version: "0.1.0"}, nil)
+	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: httpServer.URL + "/mcp"}, nil)
+	if err != nil {
+		t.Fatalf("connect to stateless streamable HTTP transport: %v", err)
+	}
+	defer session.Close()
+
+	tools, err := session.ListTools(ctx, &mcp.ListToolsParams{})
+	if err != nil {
+		t.Fatalf("list tools: %v", err)
+	}
+	if tools.TTLMs != 0 || tools.CacheScope != "public" {
+		t.Fatalf("tools cache metadata = %d/%q, want 0/public", tools.TTLMs, tools.CacheScope)
+	}
+	prompts, err := session.ListPrompts(ctx, &mcp.ListPromptsParams{})
+	if err != nil {
+		t.Fatalf("list prompts: %v", err)
+	}
+	if prompts.TTLMs != 0 || prompts.CacheScope != "public" {
+		t.Fatalf("prompts cache metadata = %d/%q, want 0/public", prompts.TTLMs, prompts.CacheScope)
+	}
+	resources, err := session.ListResources(ctx, &mcp.ListResourcesParams{})
+	if err != nil {
+		t.Fatalf("list resources: %v", err)
+	}
+	if resources.TTLMs != 0 || resources.CacheScope != "public" {
+		t.Fatalf("resources cache metadata = %d/%q, want 0/public", resources.TTLMs, resources.CacheScope)
+	}
+	resource, err := session.ReadResource(ctx, &mcp.ReadResourceParams{URI: "abs://api-inventory/current"})
+	if err != nil {
+		t.Fatalf("read API inventory resource: %v", err)
+	}
+	if resource.TTLMs != 0 || resource.CacheScope != "public" {
+		t.Fatalf("resource cache metadata = %d/%q, want 0/public", resource.TTLMs, resource.CacheScope)
+	}
+	if _, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "abs_health_check", Arguments: map[string]any{}}); err != nil {
+		t.Fatalf("call abs_health_check: %v", err)
+	}
+
+	requestsMu.Lock()
+	defer requestsMu.Unlock()
+	for _, header := range requests {
+		if header.Get("Mcp-Session-Id") != "" {
+			t.Fatalf("stateless request included Mcp-Session-Id: %q", header.Get("Mcp-Session-Id"))
+		}
+	}
+	if !hasMCPRequestHeaders(requests, "server/discover", "") {
+		t.Fatal("server/discover request did not include Mcp-Method")
+	}
+	if !hasMCPRequestHeaders(requests, "tools/call", "abs_health_check") {
+		t.Fatal("tools/call request did not include matching Mcp-Method and Mcp-Name")
+	}
+}
+
+func hasMCPRequestHeaders(requests []http.Header, method string, name string) bool {
+	for _, header := range requests {
+		if header.Get("Mcp-Method") != method {
+			continue
+		}
+		if name == "" || header.Get("Mcp-Name") == name {
+			return true
+		}
+	}
+	return false
 }
 
 func TestStreamableHTTPHandlerRequiresConfiguredBearerToken(t *testing.T) {

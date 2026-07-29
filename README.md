@@ -327,8 +327,11 @@ land in shell history or process listings.
 | `ABS_HTTP_PATH` | `--http-path` | `/mcp` |
 | `ABS_HTTP_BEARER_TOKEN` | `--http-bearer-token` | unset |
 
-Use `ABS_TRANSPORT=http` or `--transport=http` to serve Streamable HTTP at
-`http://<ABS_HTTP_ADDR><ABS_HTTP_PATH>`. The default bind address is local-only.
+Use `ABS_TRANSPORT=http` or `--transport=http` to serve stateless Streamable
+HTTP at `http://<ABS_HTTP_ADDR><ABS_HTTP_PATH>`. The default bind address is
+local-only. Each request is independently routable: it does not create or use
+an MCP session ID. Proxies must forward the `Mcp-Protocol-Version`,
+`Mcp-Method`, and `Mcp-Name` request headers unchanged.
 When `ABS_HTTP_BEARER_TOKEN` is set, HTTP clients must send
 `Authorization: Bearer <token>` to the MCP endpoint. This token protects the MCP
 HTTP endpoint and is separate from the upstream `ABS_API_KEY` sent to
@@ -435,7 +438,9 @@ go run ./cmd/abs-mcp
 
 Point Streamable HTTP clients, including local tools such as Hermes or MCP
 Inspector, at `http://127.0.0.1:3333/mcp`. If `ABS_HTTP_BEARER_TOKEN` is set,
-configure the client to send the matching bearer token.
+configure the client to send the matching bearer token. The endpoint uses a
+static bearer token, not OAuth; deploy OAuth protected-resource metadata only
+if the server later adopts an OAuth authorization flow.
 
 ### Client Configs
 

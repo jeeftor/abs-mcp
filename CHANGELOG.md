@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 - 2026-07-29
+
+### Added
+- Added support for the MCP 2026-07-28 stateless protocol revision over stdio and Streamable HTTP.
+
+### Improved
+- Streamable HTTP now uses stateless requests, standard MCP routing headers, and request-cancellation propagation.
+- Added protocol coverage for discovery, cache metadata, stateless HTTP methods, and header-based tool routing.
+
 ## 0.5.0 - 2026-06-22
 
 ### Added
