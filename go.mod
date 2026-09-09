@@ -1,13 +1,13 @@
 module github.com/jeeftor/abs-mcp
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/modelcontextprotocol/go-sdk v1.7.0-pre.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	golang.org/x/oauth2 v0.35.0
+	golang.org/x/oauth2 v0.37.0
 )
 
 require (
