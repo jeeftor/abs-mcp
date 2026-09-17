@@ -1,4 +1,6 @@
-# Local environment files. Commit .env.example and .env.testing, not real/generated tokens.
+# Local environment files. Commit .env.example and .env.testing (their ABS_TOKEN
+# is a disposable fixture key, allowlisted in .gitleaks.toml); never commit real
+# or per-user generated tokens.
 .env
 .env.local
 .env.generated
